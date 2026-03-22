@@ -1001,15 +1001,12 @@ export default function App() {
         const keep = [];
         const dupeIds = [];
         for (const block of mapped) {
-          if (block.taskId) {
-            const key = `${block.taskId}-${block.date}`;
-            if (seen.has(key)) {
-              dupeIds.push(block.id);
-            } else {
-              seen.set(key, true);
-              keep.push(block);
-            }
+          // Use a strong composite key to catch identical orphaned blocks
+          const key = `${block.title}-${block.date}-${block.startHour}`;
+          if (seen.has(key)) {
+            dupeIds.push(block.id);
           } else {
+            seen.set(key, true);
             keep.push(block);
           }
         }
