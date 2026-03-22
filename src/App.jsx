@@ -1690,7 +1690,7 @@ export default function App() {
 
   const saveCalendarSelection = async () => {
     await supabase.functions.invoke("apple-credentials", {
-      body: { action: "update", selected_calendar_id: selectedCalendarId, selected_reminders_id: selectedRemindersId },
+      body: { action: "update", selected_calendar_id: selectedCalendarId },
     });
     flash("Calendar selection saved!");
   };
@@ -1744,11 +1744,10 @@ export default function App() {
     setSyncStatus("syncing");
     setSyncError(null);
     try {
-      const [calRes, remRes] = await Promise.allSettled([
+      const [calRes] = await Promise.allSettled([
         supabase.functions.invoke("caldav-sync-calendar", { body: {} }),
-        supabase.functions.invoke("caldav-sync-reminders", { body: {} }),
       ]);
-      const errors = [calRes, remRes]
+      const errors = [calRes]
         .filter(r => r.status === "rejected" || r.value?.data?.error)
         .map(r => r.status === "rejected" ? r.reason?.message : r.value?.data?.error);
       if (errors.length > 0) {
@@ -1857,7 +1856,7 @@ export default function App() {
             <svg width="20" height="20" viewBox="0 0 18 18" fill="none"><path d="M13.21 9.48c-.02-1.89 1.55-2.8 1.62-2.84-.88-1.29-2.25-1.47-2.74-1.49-1.16-.12-2.28.69-2.87.69-.6 0-1.51-.67-2.49-.65-1.27.02-2.46.75-3.11 1.9-1.34 2.32-.34 5.74.95 7.62.64.92 1.4 1.95 2.39 1.91.97-.04 1.33-.62 2.49-.62 1.16 0 1.49.62 2.49.6 1.03-.02 1.69-.93 2.32-1.85.74-1.06 1.04-2.1 1.05-2.15-.02-.01-2.01-.77-2.1-3.12zM11.3 3.88c.52-.64.87-1.52.78-2.4-.75.03-1.68.51-2.22 1.14-.48.56-.91 1.47-.8 2.33.84.07 1.71-.43 2.24-1.07z" fill="white"/></svg>
           </div>
           <div>
-            <div style={{ fontFamily:"var(--heading)",fontSize:15,fontWeight:700,color:"var(--text)" }}>Apple Calendar & Reminders</div>
+            <div style={{ fontFamily:"var(--heading)",fontSize:15,fontWeight:700,color:"var(--text)" }}>Apple Calendar</div>
             <div style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)" }}>
               {appleConnected ? "Connected" : "Not connected"}
             </div>
@@ -1905,7 +1904,7 @@ export default function App() {
         {appleConnected && (
           <div>
             {/* Calendar Selection */}
-            {(appleCalendars.length > 0 || appleReminderLists.length > 0) && (
+            {appleCalendars.length > 0 && (
               <div style={{ marginBottom:16 }}>
                 {appleCalendars.length > 0 && (
                   <div style={{ marginBottom:12 }}>
@@ -1913,16 +1912,6 @@ export default function App() {
                     <select value={selectedCalendarId} onChange={e => setSelectedCalendarId(e.target.value)} style={{ ...inputStyle, cursor:"pointer" }}>
                       <option value="">Select a calendar...</option>
                       {appleCalendars.map(c => <option key={c.id} value={c.href}>{c.name}</option>)}
-                    </select>
-                  </div>
-                )}
-                {appleReminderLists.length > 0 && (
-                  <div style={{ marginBottom:12 }}>
-                    <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>Sync Reminders From</label>
-                    <select value={selectedRemindersId} onChange={e => setSelectedRemindersId(e.target.value)} style={{ ...inputStyle, cursor:"pointer" }}>
-                      <option value="">Select a list...</option>
-                      <option value="all">All Lists</option>
-                      {appleReminderLists.map(c => <option key={c.id} value={c.href}>{c.name}</option>)}
                     </select>
                   </div>
                 )}
