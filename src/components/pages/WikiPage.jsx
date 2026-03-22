@@ -12,6 +12,14 @@ export default function WikiPage({ wiki, setShowNewWiki, goWiki }) {
         </div>
         <Btn primary onClick={() => setShowNewWiki(true)}>+ New Article</Btn>
       </div>
+      {wiki.length === 0 && (
+        <Glass style={{ padding:32,textAlign:"center" }}>
+          <div style={{ fontSize:32,marginBottom:12 }}>&#x1f4da;</div>
+          <div style={{ fontFamily:"var(--heading)",fontSize:15,fontWeight:700,color:"var(--text)",marginBottom:6 }}>No articles yet</div>
+          <div style={{ fontFamily:"var(--body)",fontSize:13,color:"var(--muted)",marginBottom:16 }}>Start building your personal knowledge base.</div>
+          <Btn primary onClick={() => setShowNewWiki(true)}>+ Write Your First Article</Btn>
+        </Glass>
+      )}
       {categories.map(cat => (
         <div key={cat} style={{ marginBottom:20 }}>
           <div style={{ fontFamily:"var(--mono)",fontSize:9,color:"var(--muted)",textTransform:"uppercase",letterSpacing:2,marginBottom:10,fontWeight:600 }}>{cat}</div>

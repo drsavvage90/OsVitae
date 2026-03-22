@@ -37,7 +37,7 @@ export default function RewardsPage({ level, xp, themeName, streak, totalPomosEv
           <Glass key={b.id} hover style={{ display:"flex",alignItems:"center",gap:14,padding:16,opacity:b.earned?1:0.4 }}>
             <div style={{
               width:44,height:44,borderRadius:12,
-              background:b.earned?"linear-gradient(135deg, rgba(253,246,227,0.8), rgba(245,230,200,0.8))":"rgba(0,0,0,0.04)",
+              background:b.earned?"linear-gradient(135deg, rgba(253,246,227,0.8), rgba(245,230,200,0.8))":"var(--subtle-bg)",
               display:"flex",alignItems:"center",justifyContent:"center",fontSize:24,
               filter:b.earned?"none":"grayscale(1)",
             }}>{b.icon}</div>

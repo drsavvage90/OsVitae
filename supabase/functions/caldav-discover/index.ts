@@ -1,7 +1,8 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { corsHeaders, handleCors } from "../_shared/cors.ts";
 import { getSupabaseForUser } from "../_shared/auth.ts";
 import { decrypt } from "../_shared/crypto.ts";
+import { errorResponse } from "../_shared/errors.ts";
 import { listCalendars } from "../_shared/caldav-client.ts";
 
 serve(async (req: Request) => {
@@ -13,7 +14,7 @@ serve(async (req: Request) => {
 
     const { data: creds } = await supabase
       .from("apple_credentials")
-      .select("*")
+      .select("apple_id, app_password_encrypted, calendar_home_set")
       .eq("user_id", userId)
       .single();
 
@@ -25,7 +26,8 @@ serve(async (req: Request) => {
     }
 
     const password = await decrypt(creds.app_password_encrypted);
-    const calendars = await listCalendars(creds.calendar_home_set, creds.apple_id, password);
+    const appleId = await decrypt(creds.apple_id);
+    const calendars = await listCalendars(creds.calendar_home_set, appleId, password);
 
     return new Response(
       JSON.stringify({
@@ -35,10 +37,6 @@ serve(async (req: Request) => {
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (e) {
-    console.error("caldav-discover error:", e);
-    return new Response(
-      JSON.stringify({ error: "Discover failed: " + String(e) }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return errorResponse("Calendar discovery", e);
   }
 });

@@ -19,8 +19,9 @@ export default function WikiArticlePage({ activeWiki, setPage, editingWiki, setE
           <Btn small onClick={() => { if (editingWiki) { saveWikiEdit(); } else { setEditWikiContent(activeWiki.content); setEditingWiki(true); } }}>
             {editingWiki ? "Save" : <><Pencil size={12} style={{ marginRight:4 }} />Edit</>}
           </Btn>
-          <div onClick={() => { if (confirm("Delete this article?")) deleteWikiArticle(activeWiki.id); }} style={{ cursor:"pointer",color:"var(--muted)",padding:4 }}
-            onMouseEnter={e => e.currentTarget.style.color="#EF4444"} onMouseLeave={e => e.currentTarget.style.color="var(--muted)"}
+          <div role="button" onClick={() => { if (confirm("Delete this article?")) deleteWikiArticle(activeWiki.id); }} style={{ width:32,height:32,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",color:"var(--muted)",transition:"all 0.15s" }}
+            onMouseEnter={e => { e.currentTarget.style.color="#EF4444"; e.currentTarget.style.background="rgba(239,68,68,0.08)"; }}
+            onMouseLeave={e => { e.currentTarget.style.color="var(--muted)"; e.currentTarget.style.background="transparent"; }}
           ><Trash2 size={16}/></div>
         </div>
       </div>

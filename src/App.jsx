@@ -3,7 +3,6 @@ import {
   Zap, Home, ClipboardList, Timer, Trophy,
   Flame, Gift, Check,
   Search, Clock, CheckCircle2, ArrowLeft, Plus, X,
-  Users, UserPlus, Mail, Phone, MessageSquare, MapPin,
   RefreshCw, Inbox, Trash2, ChevronRight, Menu,
 } from "lucide-react";
 import { supabase } from "./lib/supabase";
@@ -14,35 +13,28 @@ import {
 } from "./lib/constants";
 import { Glass, Btn, Modal, Toast } from "./components/ui";
 import { getUserId } from "./lib/getUserId";
+import { logger } from "./lib/logger";
+import { validateTitle, validateDescription, validateName, validateAmount, validateEmail, validatePhone, sanitizeText, MAX_TITLE, MAX_DESC, MAX_NAME } from "./lib/validate";
 import { useFlash } from "./hooks/useFlash";
-import { useBookmarks } from "./hooks/useBookmarks";
-import { useHabits } from "./hooks/useHabits";
+import { useHabits, daysForFrequency } from "./hooks/useHabits";
 import { useInbox } from "./hooks/useInbox";
 import { useWiki } from "./hooks/useWiki";
-import { useGoals } from "./hooks/useGoals";
-import { useContacts } from "./hooks/useContacts";
-import { useTemplates } from "./hooks/useTemplates";
 import { useFinance } from "./hooks/useFinance";
 import Sidebar from "./components/Sidebar";
 import RewardsPage from "./components/pages/RewardsPage";
 import AllTasksPage from "./components/pages/AllTasksPage";
-import BookmarksPage from "./components/pages/BookmarksPage";
-import TemplatesPage from "./components/pages/TemplatesPage";
 import InboxPage from "./components/pages/InboxPage";
-import ContactsPage from "./components/pages/ContactsPage";
-import ContactDetailPage from "./components/pages/ContactDetailPage";
 import HabitsPage from "./components/pages/HabitsPage";
-import GoalsPage from "./components/pages/GoalsPage";
 import WikiPage from "./components/pages/WikiPage";
 import WikiArticlePage from "./components/pages/WikiArticlePage";
 import CalendarPage from "./components/pages/CalendarPage";
 import ReviewPage from "./components/pages/ReviewPage";
-import ScratchpadPage from "./components/pages/ScratchpadPage";
 import FinancePage from "./components/pages/FinancePage";
 import SettingsPage from "./components/pages/SettingsPage";
 import TimerPage from "./components/pages/TimerPage";
 import TodayPage from "./components/pages/TodayPage";
 import WorkspacePage from "./components/pages/WorkspacePage";
+import ProjectPage from "./components/pages/ProjectPage";
 import TaskDetailPage from "./components/pages/TaskDetailPage";
 
 
@@ -56,7 +48,7 @@ export default function App() {
   const [activeWsId, setActiveWsId] = useState(null);
   const [activeTaskId, setActiveTaskId] = useState(null);
   const [editingTask, setEditingTask] = useState(null);
-  const [wsTab, setWsTab] = useState("Tasks");
+  const [wsTab, setWsTab] = useState("Projects");
   const [collapsed, setCollapsed] = useState(false);
   const [themeName, setThemeName] = useState(() => localStorage.getItem("osvitae-theme") || "default");
   const theme = THEMES[themeName] || THEMES.default;
@@ -100,6 +92,14 @@ export default function App() {
   const [newTaskDesc, setNewTaskDesc] = useState("");
   const [newTaskPriority, setNewTaskPriority] = useState("medium");
   const [newTaskWs, setNewTaskWs] = useState(null);
+  const [newTaskDueDate, setNewTaskDueDate] = useState("");
+  const [newTaskDueTime, setNewTaskDueTime] = useState("");
+  const [newTaskSection, setNewTaskSection] = useState("afternoon");
+  const [newTaskReward, setNewTaskReward] = useState("");
+  const [newTaskPomos, setNewTaskPomos] = useState(2);
+  const [newTaskSubtasks, setNewTaskSubtasks] = useState([]);
+  const [newSubtaskText, setNewSubtaskText] = useState("");
+  const [editSubtaskText, setEditSubtaskText] = useState("");
   const [newNoteText, setNewNoteText] = useState("");
   const { toast, flash } = useFlash();
   const [searchQuery, setSearchQuery] = useState("");
@@ -107,11 +107,21 @@ export default function App() {
   const [showMobileSidebar, setShowMobileSidebar] = useState(false);
   const [intentionText, setIntentionText] = useState("");
   const [editingIntention, setEditingIntention] = useState(false);
+  const [rewardText, setRewardText] = useState("");
+  const [editingReward, setEditingReward] = useState(false);
   const [workspaces, setWorkspaces] = useState(INIT_WORKSPACES);
   const [showNewWs, setShowNewWs] = useState(false);
   const [newWsName, setNewWsName] = useState("");
   const [newWsColor, setNewWsColor] = useState(WS_COLOR_OPTIONS[0]);
   const [newWsIcon, setNewWsIcon] = useState("Folder");
+  const [projects, setProjects] = useState([]);
+  const [showNewProject, setShowNewProject] = useState(false);
+  const [newProjectName, setNewProjectName] = useState("");
+  const [newProjectColor, setNewProjectColor] = useState(WS_COLOR_OPTIONS[0]);
+  const [newProjectIcon, setNewProjectIcon] = useState("Folder");
+  const [newProjectWsId, setNewProjectWsId] = useState(null);
+  const [activeProjectId, setActiveProjectId] = useState(null);
+  const [newTaskProject, setNewTaskProject] = useState(null);
   const [wsNotes, setWsNotes] = useState([]);
   const [wsDocs, setWsDocs] = useState([]);
   const [showWsNote, setShowWsNote] = useState(false);
@@ -142,39 +152,20 @@ export default function App() {
   });
   const [profileLoaded, setProfileLoaded] = useState(false);
   const [profileSaving, setProfileSaving] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   // ─── NEW FEATURE STATE ───
-  // Contacts
-  // Contacts
-  const {
-    contacts, setContacts, activeContactId, setActiveContactId,
-    showNewContact, setShowNewContact,
-    newContactName, setNewContactName,
-    newContactEmail, setNewContactEmail,
-    newContactContext, setNewContactContext,
-    showNewInteraction, setShowNewInteraction,
-    newInteractionText, setNewInteractionText,
-    newInteractionType, setNewInteractionType,
-    editingContact, setEditingContact,
-    createContact, updateContact, addInteraction, deleteContact: deleteContactHook,
-  } = useContacts(flash);
 
   // Habits
   const {
     habits, setHabits, showNewHabit, setShowNewHabit,
     newHabitName, setNewHabitName, newHabitFreq, setNewHabitFreq,
+    newHabitDays, setNewHabitDays,
     newHabitColor, setNewHabitColor,
     editingHabit, setEditingHabit,
     toggleHabit, createHabit, updateHabit, deleteHabit,
   } = useHabits(flash, addXp);
-
-  // Goals
-  const {
-    goals, setGoals, showNewGoal, setShowNewGoal,
-    newGoalTitle, setNewGoalTitle, expandedGoals, setExpandedGoals,
-    editingGoal, setEditingGoal,
-    createGoal, updateGoal, deleteGoal,
-  } = useGoals(flash);
 
   // Calendar
   const [timeBlocks, setTimeBlocks] = useState(INIT_TIME_BLOCKS);
@@ -184,30 +175,12 @@ export default function App() {
   const [newBlockEnd, setNewBlockEnd] = useState(10);
   const [editingBlock, setEditingBlock] = useState(null);
 
-  // Bookmarks
-  const {
-    bookmarks, setBookmarks, showNewBookmark, setShowNewBookmark,
-    newBmTitle, setNewBmTitle, newBmUrl, setNewBmUrl,
-    newBmDesc, setNewBmDesc, newBmWs, setNewBmWs,
-    editingBookmark, setEditingBookmark,
-    createBookmark, updateBookmark, deleteBookmark,
-  } = useBookmarks(flash);
-
   // Inbox
   const {
     inbox, setInbox, newInboxText, setNewInboxText,
     editingInboxItem, setEditingInboxItem,
     addInboxItem, updateInboxItem, triageInbox, dismissInbox,
   } = useInbox(flash);
-
-  // Templates
-  const {
-    templates, setTemplates, showNewTemplate, setShowNewTemplate,
-    newTemplateName, setNewTemplateName,
-    newTemplateCategory, setNewTemplateCategory,
-    newTemplateItems, setNewTemplateItems,
-    createTemplate, useTemplate, deleteTemplate,
-  } = useTemplates(flash, setTasks);
 
   // Wiki
   const {
@@ -249,17 +222,6 @@ export default function App() {
     saveBudget, addIncome, togglePaid,
     addBill, deleteBill, updateBill,
   } = useFinance(flash);
-
-  // Scratchpad (Apple Pencil canvas)
-  const canvasRef = useRef(null);
-  const [isDrawing, setIsDrawing] = useState(false);
-  const [penColor, setPenColor] = useState("#111827");
-  const [penSize, setPenSize] = useState(3);
-  const [eraserMode, setEraserMode] = useState(false);
-  const [canvasHistory, setCanvasHistory] = useState([]);
-  const lastPoint = useRef(null);
-
-
 
   // Sidebar is hidden on tablets via CSS (hamburger menu used instead)
 
@@ -313,11 +275,12 @@ export default function App() {
     const task = tasks.find(t => t.id === id);
     if (!task) return;
     const newDone = !task.done;
+    const newStatus = newDone ? "done" : "todo";
     if (newDone) { addXp(25); setTotalTasksDone(d => d + 1); flash("Task complete! +25 XP"); }
-    setTasks(ts => ts.map(t => t.id === id ? { ...t, done: newDone } : t));
-    const { error } = await supabase.from("tasks").update({ done: newDone }).eq("id", id);
+    setTasks(ts => ts.map(t => t.id === id ? { ...t, done: newDone, status: newStatus } : t));
+    const { error } = await supabase.from("tasks").update({ done: newDone, status: newStatus }).eq("id", id);
     if (error) {
-      console.error("Failed to update task:", error);
+      logger.error("Failed to update task:", error);
       setTasks(ts => ts.map(t => t.id === id ? { ...t, done: !newDone } : t));
       flash("Update failed — please try again.");
       return;
@@ -327,7 +290,35 @@ export default function App() {
         body: { action: "update-todo", href: task.caldav_href, uid: task.externalId,
           title: task.title, done: newDone, priority: task.priority,
           description: task.description, etag: task.caldav_etag },
-      }).catch(e => console.warn("CalDAV sync skipped:", e.message));
+      }).catch(e => logger.warn("CalDAV sync skipped:", e.message));
+    }
+  };
+
+  const updateTaskStatus = async (id, newStatus) => {
+    const task = tasks.find(t => t.id === id);
+    if (!task) return;
+    const newDone = newStatus === "done";
+    const wasDone = task.done;
+    if (newDone && !wasDone) { addXp(25); setTotalTasksDone(d => d + 1); flash("Task complete! +25 XP"); }
+    setTasks(ts => ts.map(t => t.id === id ? { ...t, status: newStatus, done: newDone } : t));
+    const { error } = await supabase.from("tasks").update({ status: newStatus, done: newDone }).eq("id", id);
+    if (error) {
+      logger.error("Failed to update task status:", error);
+      setTasks(ts => ts.map(t => t.id === id ? { ...t, status: task.status, done: task.done } : t));
+      flash("Status update failed.");
+    }
+  };
+
+  const updateTaskField = async (id, field, value) => {
+    const task = tasks.find(t => t.id === id);
+    if (!task) return;
+    setTasks(ts => ts.map(t => t.id === id ? { ...t, [field]: value } : t));
+    const dbField = field === "wsId" ? "workspace_id" : field === "projectId" ? "project_id" : field === "dueDate" ? "due_date" : field === "dueTime" ? "due_time" : field;
+    const { error } = await supabase.from("tasks").update({ [dbField]: value }).eq("id", id);
+    if (error) {
+      logger.error(`Failed to update task ${field}:`, error);
+      setTasks(ts => ts.map(t => t.id === id ? { ...t, [field]: task[field] } : t));
+      flash("Update failed.");
     }
   };
 
@@ -336,7 +327,7 @@ export default function App() {
     setTasks(ts => ts.filter(t => t.id !== id));
     const { error } = await supabase.from("tasks").delete().eq("id", id);
     if (error) {
-      console.error("Failed to delete task:", error);
+      logger.error("Failed to delete task:", error);
       if (task) setTasks(ts => [...ts, task]);
       flash("Delete failed — please try again.");
       return;
@@ -344,7 +335,7 @@ export default function App() {
     if (task?.caldav_href) {
       supabase.functions.invoke("caldav-item", {
         body: { action: "delete", href: task.caldav_href, etag: task.caldav_etag },
-      }).catch(e => console.warn("CalDAV delete skipped:", e.message));
+      }).catch(e => logger.warn("CalDAV delete skipped:", e.message));
     }
     flash("Task deleted.");
   };
@@ -355,13 +346,39 @@ export default function App() {
       ...t, title: editingTask.title, desc: editingTask.desc,
       description: editingTask.desc, priority: editingTask.priority,
       dueDate: editingTask.dueDate, dueTime: editingTask.dueTime,
+      section: editingTask.section, wsId: editingTask.wsId,
+      projectId: editingTask.projectId, status: editingTask.status || t.status,
+      reward: editingTask.reward, totalPomos: editingTask.totalPomos,
+      subtasks: editingTask.subtasks,
     } : t));
     const { error } = await supabase.from("tasks").update({
       title: editingTask.title, description: editingTask.desc,
       priority: editingTask.priority, due_date: editingTask.dueDate || null,
       due_time: editingTask.dueTime || null,
+      section: editingTask.section || "afternoon",
+      workspace_id: editingTask.wsId || null,
+      project_id: editingTask.projectId || null,
+      reward: editingTask.reward || null,
+      total_pomos: editingTask.totalPomos || 0,
     }).eq("id", editingTask.id);
-    if (error) console.error("Failed to update task:", error);
+    if (error) logger.error("Failed to update task:", error);
+    // Sync subtasks: delete removed, insert new
+    const userId = await getUserId();
+    if (userId) {
+      const oldTask = tasks.find(t => t.id === editingTask.id);
+      const oldIds = new Set((oldTask?.subtasks || []).map(s => s.id));
+      const newIds = new Set((editingTask.subtasks || []).map(s => s.id));
+      const removed = [...oldIds].filter(id => !newIds.has(id));
+      const added = (editingTask.subtasks || []).filter(s => !oldIds.has(s.id));
+      for (const rid of removed) {
+        await supabase.from("subtasks").delete().eq("id", rid);
+      }
+      if (added.length > 0) {
+        await supabase.from("subtasks").insert(
+          added.map((s, i) => ({ id: s.id, user_id: userId, task_id: editingTask.id, text: s.text, done: false, xp: s.xp || 10, position: (oldTask?.subtasks?.length || 0) + i }))
+        );
+      }
+    }
     setEditingTask(null);
     flash(error ? "Update failed — please try again." : "Task updated!");
   };
@@ -379,32 +396,51 @@ export default function App() {
       })};
     }));
     const { error } = await supabase.from("subtasks").update({ done: newDoneVal }).eq("id", subId);
-    if (error) console.error("Failed to update subtask:", error);
+    if (error) logger.error("Failed to update subtask:", error);
   };
 
   const createTask = async () => {
-    if (!newTaskTitle.trim()) return;
+    const titleCheck = validateTitle(newTaskTitle);
+    if (!titleCheck.valid) { flash(titleCheck.error); return; }
+    const descCheck = validateDescription(newTaskDesc);
     const id = crypto.randomUUID();
-    const title = newTaskTitle, desc = newTaskDesc, priority = newTaskPriority, wsId = newTaskWs;
+    const title = titleCheck.value, desc = descCheck.value, priority = newTaskPriority, wsId = newTaskWs;
+    const projectId = newTaskProject || null;
+    const dueDate = newTaskDueDate || null, dueTime = newTaskDueTime || null;
+    const section = newTaskSection, reward = newTaskReward || null, totalPomos = newTaskPomos;
+    const subtaskObjs = newTaskSubtasks.map((text, i) => ({ id: crypto.randomUUID(), text, done: false, xp: 10, position: i }));
     const newTask = {
-      id, title, desc, priority,
-      wsId, dueTime: null, dueDate: null, done: false, section: "afternoon",
-      subtasks: [], notes: [], attachments: [], totalPomos: 2, donePomos: 0, reward: null,
+      id, title, desc, description: desc, priority,
+      wsId, projectId, dueTime, dueDate, done: false, status: "todo", section,
+      subtasks: subtaskObjs, notes: [], attachments: [], totalPomos, donePomos: 0, reward,
     };
     setTasks(ts => [...ts, newTask]);
-    setNewTaskTitle(""); setNewTaskDesc(""); setShowNewTask(false);
+    setNewTaskTitle(""); setNewTaskDesc(""); setNewTaskDueDate(""); setNewTaskDueTime("");
+    setNewTaskSection("afternoon"); setNewTaskReward(""); setNewTaskPomos(2);
+    setNewTaskSubtasks([]); setNewSubtaskText(""); setShowNewTask(false);
+    setNewTaskProject(null);
     flash("Task created!");
     const userId = await getUserId();
     if (!userId) return;
     const { error } = await supabase.from("tasks").insert({
       id, user_id: userId, title, description: desc,
-      priority, done: false, section: "afternoon",
+      priority, done: false, status: "todo", section,
       workspace_id: wsId || null,
+      project_id: projectId,
+      due_date: dueDate, due_time: dueTime,
+      reward, total_pomos: totalPomos,
     });
     if (error) {
-      console.error("Failed to save task:", error);
+      logger.error("Failed to save task:", error);
       setTasks(ts => ts.filter(t => t.id !== id));
       flash("Failed to save task — please try again.");
+      return;
+    }
+    if (subtaskObjs.length > 0) {
+      const { error: subErr } = await supabase.from("subtasks").insert(
+        subtaskObjs.map(s => ({ id: s.id, user_id: userId, task_id: id, text: s.text, done: false, xp: s.xp, position: s.position }))
+      );
+      if (subErr) logger.error("Failed to save subtasks:", subErr);
     }
   };
 
@@ -419,7 +455,7 @@ export default function App() {
     if (!userId) return;
     const { error } = await supabase.from("task_notes").insert({ id: nid, user_id: userId, task_id: taskId, text });
     if (error) {
-      console.error("Failed to save note:", error);
+      logger.error("Failed to save note:", error);
       setTasks(ts => ts.map(t => t.id === taskId ? { ...t, notes: t.notes.filter(n => n.id !== nid) } : t));
       flash("Failed to save note.");
     }
@@ -436,9 +472,10 @@ export default function App() {
   };
 
   const createWorkspace = async () => {
-    if (!newWsName.trim()) return;
+    const nameCheck = validateName(newWsName);
+    if (!nameCheck.valid) { flash(nameCheck.error); return; }
     const id = crypto.randomUUID();
-    const name = newWsName, icon = newWsIcon, color = newWsColor, pos = workspaces.length;
+    const name = nameCheck.value, icon = newWsIcon, color = newWsColor, pos = workspaces.length;
     setWorkspaces(prev => [...prev, { id, name, icon, color }]);
     setNewWsName(""); setNewWsColor(WS_COLOR_OPTIONS[0]); setNewWsIcon("Folder"); setShowNewWs(false);
     flash("Workspace created!");
@@ -447,10 +484,38 @@ export default function App() {
     if (!userId) return;
     const { error } = await supabase.from("workspaces").insert({ id, user_id: userId, name, icon, color, position: pos });
     if (error) {
-      console.error("Failed to save workspace:", error);
+      logger.error("Failed to save workspace:", error);
       setWorkspaces(prev => prev.filter(w => w.id !== id));
       flash("Failed to save workspace.");
     }
+  };
+
+  const createProject = async () => {
+    if (!newProjectName.trim() || !newProjectWsId) return;
+    const id = crypto.randomUUID();
+    const name = newProjectName, icon = newProjectIcon, color = newProjectColor, wsId = newProjectWsId;
+    const pos = projects.filter(p => p.wsId === wsId).length;
+    setProjects(prev => [...prev, { id, name, icon, color, wsId }]);
+    setNewProjectName(""); setNewProjectColor(WS_COLOR_OPTIONS[0]); setNewProjectIcon("Folder"); setShowNewProject(false);
+    flash("Project created!");
+    goProject(id);
+    const userId = await getUserId();
+    if (!userId) return;
+    const { error } = await supabase.from("projects").insert({ id, user_id: userId, workspace_id: wsId, name, icon, color, position: pos });
+    if (error) {
+      logger.error("Failed to save project:", error);
+      setProjects(prev => prev.filter(p => p.id !== id));
+      flash("Failed to save project.");
+    }
+  };
+
+  const deleteProject = async (id) => {
+    const proj = projects.find(p => p.id === id);
+    setProjects(prev => prev.filter(p => p.id !== id));
+    if (activeProjectId === id) setPage("workspace");
+    flash("Project deleted.");
+    const { error } = await supabase.from("projects").delete().eq("id", id);
+    if (error) { logger.error("Failed to delete project:", error); if (proj) setProjects(prev => [...prev, proj]); flash("Delete failed."); }
   };
 
   const createWsNote = async () => {
@@ -465,7 +530,7 @@ export default function App() {
     if (!userId) return;
     const { error } = await supabase.from("workspace_notes").insert({ id: nid, user_id: userId, workspace_id: wsId, title, text });
     if (error) {
-      console.error("Failed to save note:", error);
+      logger.error("Failed to save note:", error);
       setWsNotes(prev => prev.filter(n => n.id !== nid));
       flash("Failed to save note.");
     }
@@ -486,17 +551,13 @@ export default function App() {
     if (!userId) return;
     const { error } = await supabase.from("workspace_docs").insert({ id: did, user_id: userId, workspace_id: wsId, name, type });
     if (error) {
-      console.error("Failed to save doc:", error);
+      logger.error("Failed to save doc:", error);
       setWsDocs(prev => prev.filter(d => d.id !== did));
       flash("Failed to save document.");
     }
   };
 
   // ─── NAVIGATION-AWARE DELETE WRAPPERS ───
-  const deleteContact = async (id) => {
-    const wasActive = await deleteContactHook(id);
-    if (wasActive) setPage("contacts");
-  };
   const deleteWikiArticle = (id) => {
     const wasActive = deleteWikiArticleHook(id);
     if (wasActive) setPage("wiki");
@@ -517,7 +578,7 @@ export default function App() {
       end_hour: endHour, block_date: blockDate, color: "#5B8DEF", type: "work",
     });
     if (error) {
-      console.error("Failed to save time block:", error);
+      logger.error("Failed to save time block:", error);
       setTimeBlocks(prev => prev.filter(b => b.id !== id));
       flash("Failed to save time block.");
     } else {
@@ -532,7 +593,7 @@ export default function App() {
     setWsNotes(prev => prev.filter(n => n.id !== id));
     flash("Note deleted.");
     const { error } = await supabase.from("workspace_notes").delete().eq("id", id);
-    if (error) { console.error("Failed to delete note:", error); if (note) setWsNotes(prev => [...prev, note]); flash("Delete failed."); }
+    if (error) { logger.error("Failed to delete note:", error); if (note) setWsNotes(prev => [...prev, note]); flash("Delete failed."); }
   };
 
   const deleteWsDoc = async (id) => {
@@ -540,23 +601,24 @@ export default function App() {
     setWsDocs(prev => prev.filter(d => d.id !== id));
     flash("Document deleted.");
     const { error } = await supabase.from("workspace_docs").delete().eq("id", id);
-    if (error) { console.error("Failed to delete doc:", error); if (doc) setWsDocs(prev => [...prev, doc]); flash("Delete failed."); }
+    if (error) { logger.error("Failed to delete doc:", error); if (doc) setWsDocs(prev => [...prev, doc]); flash("Delete failed."); }
   };
 
   const deleteWorkspace = async (id) => {
     const ws = workspaces.find(w => w.id === id);
     setWorkspaces(prev => prev.filter(w => w.id !== id));
+    setProjects(prev => prev.filter(p => p.wsId !== id));
     if (activeWsId === id) setPage("today");
     flash("Workspace deleted.");
     const { error } = await supabase.from("workspaces").delete().eq("id", id);
-    if (error) { console.error("Failed to delete workspace:", error); if (ws) setWorkspaces(prev => [...prev, ws]); flash("Delete failed."); }
+    if (error) { logger.error("Failed to delete workspace:", error); if (ws) setWorkspaces(prev => [...prev, ws]); flash("Delete failed."); }
   };
 
   const deleteTaskNote = async (taskId, noteId) => {
     setTasks(ts => ts.map(t => t.id === taskId ? { ...t, notes: t.notes.filter(n => n.id !== noteId) } : t));
     flash("Note deleted.");
     const { error } = await supabase.from("task_notes").delete().eq("id", noteId);
-    if (error) console.error("Failed to delete note:", error);
+    if (error) logger.error("Failed to delete note:", error);
   };
 
   const updateTimeBlock = async (id, updates) => {
@@ -572,128 +634,24 @@ export default function App() {
     if (updates.type !== undefined) dbUpdates.type = updates.type;
     const { error } = await supabase.from("time_blocks").update(dbUpdates).eq("id", id);
     if (error) {
-      console.error("Failed to update time block:", error);
+      logger.error("Failed to update time block:", error);
       if (prev) setTimeBlocks(bs => bs.map(b => b.id === id ? prev : b));
       flash("Update failed.");
     }
   };
 
-  const deleteTimeBlock = (id) => {
-    setTimeBlocks(prev => prev.filter(b => b.id !== id));
-    supabase.from("time_blocks").delete().eq("id", id);
+  const deleteTimeBlock = async (id) => {
+    const prev = timeBlocks;
+    setTimeBlocks(bs => bs.filter(b => b.id !== id));
+    const { error } = await supabase.from("time_blocks").delete().eq("id", id);
+    if (error) {
+      logger.error("Failed to delete time block:", error);
+      setTimeBlocks(prev);
+      flash("Delete failed.");
+      return;
+    }
     flash("Time block deleted.");
   };
-
-  // ─── SCRATCHPAD (Apple Pencil) HELPERS ───
-
-  const saveCanvasSnapshot = useCallback(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const snapshot = canvas.toDataURL();
-    setCanvasHistory(prev => [...prev.slice(-30), snapshot]);
-  }, []);
-
-  const getCanvasPoint = useCallback((e) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return { x: 0, y: 0, pressure: 0.5 };
-    const rect = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
-    return {
-      x: (e.clientX - rect.left) * scaleX,
-      y: (e.clientY - rect.top) * scaleY,
-      pressure: e.pressure || 0.5,
-    };
-  }, []);
-
-  const handleCanvasPointerDown = useCallback((e) => {
-    e.preventDefault();
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    canvas.setPointerCapture(e.pointerId);
-    saveCanvasSnapshot();
-    const pt = getCanvasPoint(e);
-    lastPoint.current = pt;
-    setIsDrawing(true);
-    const ctx = canvas.getContext("2d");
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
-    if (eraserMode) {
-      ctx.globalCompositeOperation = "destination-out";
-      ctx.lineWidth = penSize * 6;
-    } else {
-      ctx.globalCompositeOperation = "source-over";
-      ctx.strokeStyle = penColor;
-      ctx.lineWidth = Math.max(1, penSize * (0.5 + pt.pressure));
-    }
-    ctx.beginPath();
-    ctx.moveTo(pt.x, pt.y);
-    // Draw a dot for taps
-    ctx.lineTo(pt.x + 0.1, pt.y + 0.1);
-    ctx.stroke();
-  }, [eraserMode, penColor, penSize, getCanvasPoint, saveCanvasSnapshot]);
-
-  const handleCanvasPointerMove = useCallback((e) => {
-    if (!isDrawing) return;
-    e.preventDefault();
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const pt = getCanvasPoint(e);
-    const ctx = canvas.getContext("2d");
-    if (eraserMode) {
-      ctx.globalCompositeOperation = "destination-out";
-      ctx.lineWidth = penSize * 6;
-    } else {
-      ctx.globalCompositeOperation = "source-over";
-      ctx.strokeStyle = penColor;
-      ctx.lineWidth = Math.max(1, penSize * (0.5 + pt.pressure));
-    }
-    ctx.beginPath();
-    ctx.moveTo(lastPoint.current.x, lastPoint.current.y);
-    ctx.lineTo(pt.x, pt.y);
-    ctx.stroke();
-    lastPoint.current = pt;
-  }, [isDrawing, eraserMode, penColor, penSize, getCanvasPoint]);
-
-  const handleCanvasPointerUp = useCallback((e) => {
-    setIsDrawing(false);
-    lastPoint.current = null;
-  }, []);
-
-  const undoCanvas = useCallback(() => {
-    const canvas = canvasRef.current;
-    if (!canvas || canvasHistory.length === 0) return;
-    const prev = canvasHistory[canvasHistory.length - 1];
-    setCanvasHistory(h => h.slice(0, -1));
-    const ctx = canvas.getContext("2d");
-    const img = new Image();
-    img.onload = () => {
-      ctx.globalCompositeOperation = "source-over";
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(img, 0, 0);
-    };
-    img.src = prev;
-  }, [canvasHistory]);
-
-  const clearCanvas = useCallback(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    saveCanvasSnapshot();
-    const ctx = canvas.getContext("2d");
-    ctx.globalCompositeOperation = "source-over";
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    flash("Canvas cleared");
-  }, [saveCanvasSnapshot]);
-
-  const downloadCanvas = useCallback(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const link = document.createElement("a");
-    link.download = `scratchpad-${Date.now()}.png`;
-    link.href = canvas.toDataURL("image/png");
-    link.click();
-    flash("Image saved!");
-  }, []);
 
   // Computed
   const ws = workspaces;
@@ -708,18 +666,19 @@ export default function App() {
   const hour = new Date().getHours();
   const firstName = profileData.full_name ? profileData.full_name.split(" ")[0] : "";
   const greeting = (hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening") + (firstName ? `, ${firstName}` : "");
-  const activeContact = contacts.find(c => c.id === activeContactId);
   const activeWiki = wiki.find(a => a.id === activeWikiId);
 
   const filteredTasks = searchQuery
     ? tasks.filter(t => t.title.toLowerCase().includes(searchQuery.toLowerCase()) || (t.desc || "").toLowerCase().includes(searchQuery.toLowerCase()))
     : tasks;
 
+  const activeProject = projects.find(p => p.id === activeProjectId);
+
   // Navigate helpers
   const goTask = (id) => { setActiveTaskId(id); setPage("task"); setShowMobileSidebar(false); };
-  const goWs = (id) => { setActiveWsId(id); setWsTab("Tasks"); setPage("workspace"); setShowMobileSidebar(false); };
+  const goWs = (id) => { setActiveWsId(id); setWsTab("Projects"); setPage("workspace"); setShowMobileSidebar(false); };
+  const goProject = (id) => { setActiveProjectId(id); const proj = projects.find(p => p.id === id); if (proj) setActiveWsId(proj.wsId); setPage("project"); setShowMobileSidebar(false); };
   const goToday = () => { setPage("today"); setShowMobileSidebar(false); };
-  const goContact = (id) => { setActiveContactId(id); setPage("contactDetail"); };
   const goWiki = (id) => { setActiveWikiId(id); setEditingWiki(false); setPage("wikiArticle"); };
 
   // ─── INPUT STYLE ───
@@ -729,13 +688,10 @@ export default function App() {
     outline:"none", transition:"border 0.2s",
   };
 
-  const healthColors = { strong: "#22C55E", "needs-attention": "#F59E0B", fading: "#EF4444" };
-  const healthLabels = { strong: "Strong", "needs-attention": "Needs attention", fading: "Fading" };
-  const goalStatusColors = { "in-progress": "#5B8DEF", "on-track": "#22C55E", "at-risk": "#EF4444", "completed": "#A78BFA" };
-
   // ─── TASK ROW (reused in today & workspace & allTasks) ───
-  const TaskRow = ({ task, idx, showWs = true }) => {
+  const TaskRow = ({ task, idx, showWs = true, showProject = true }) => {
     const w = ws.find(x => x.id === task.wsId);
+    const proj = projects.find(p => p.id === task.projectId);
     const subDone = task.subtasks.filter(s => s.done).length;
     return (
       <div style={{
@@ -757,12 +713,15 @@ export default function App() {
         <div style={{ width:6,height:6,borderRadius:"50%",background:pColors[task.priority],flexShrink:0 }} />
         <div style={{ flex:1,minWidth:0 }}>
           <span style={{ fontFamily:"var(--heading)",fontSize:14,fontWeight:600,color:"var(--text)",textDecoration:task.done?"line-through":"none" }}>{task.title}</span>
-          <div style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",marginTop:2 }}>{task.desc}</div>
+          {task.desc && <div style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{task.desc}</div>}
           <div style={{ display:"flex",alignItems:"center",gap:8,marginTop:6,flexWrap:"wrap" }}>
-            {showWs && <span style={{ display:"inline-flex",alignItems:"center",gap:4,background:`${w?.color}14`,padding:"2px 10px",borderRadius:8,fontFamily:"var(--mono)",fontSize:10,color:w?.color,fontWeight:600 }}>{getWsIcon(w?.icon, 10)} {w?.name}</span>}
+            {showWs && w && <span style={{ display:"inline-flex",alignItems:"center",gap:4,background:`${w?.color}14`,padding:"2px 10px",borderRadius:8,fontFamily:"var(--mono)",fontSize:10,color:w?.color,fontWeight:600 }}>{getWsIcon(w?.icon, 10)} {w?.name}</span>}
+            {showProject && proj && <span style={{ display:"inline-flex",alignItems:"center",gap:4,background:`${proj.color}14`,padding:"2px 10px",borderRadius:8,fontFamily:"var(--mono)",fontSize:10,color:proj.color,fontWeight:600 }}>{getWsIcon(proj.icon, 10)} {proj.name}</span>}
             {task.subtasks.length > 0 && <span style={{ fontFamily:"var(--mono)",fontSize:10,color:"var(--muted)" }}><CheckCircle2 size={12} style={{ display: "inline", verticalAlign: "middle", marginRight: 2 }} /> {subDone}/{task.subtasks.length}</span>}
-            <span style={{ fontFamily:"var(--mono)",fontSize:10,color:"var(--muted)" }}><Timer size={12} style={{ display: "inline", verticalAlign: "middle", marginRight: 2 }} /> {task.donePomos}/{task.totalPomos}</span>
+            {task.totalPomos > 0 && <span style={{ fontFamily:"var(--mono)",fontSize:10,color:"var(--muted)" }}><Timer size={12} style={{ display: "inline", verticalAlign: "middle", marginRight: 2 }} /> {task.donePomos}/{task.totalPomos}</span>}
+            {task.dueDate && <span style={{ fontFamily:"var(--mono)",fontSize:10,fontWeight:600,color:"var(--muted)",background:"var(--subtle-bg)",padding:"2px 8px",borderRadius:8 }}>{task.dueDate}</span>}
             {task.dueTime && <span style={{ fontFamily:"var(--mono)",fontSize:10,fontWeight:600,color:task.priority==="high"?"var(--danger)":"var(--muted)",background:task.priority==="high"?"rgba(239,68,68,0.08)":"var(--subtle-bg)",padding:"2px 8px",borderRadius:8 }}><Clock size={12} style={{ display: "inline", verticalAlign: "middle", marginRight: 2 }} /> {task.dueTime}</span>}
+            {task.reward && <span style={{ fontFamily:"var(--mono)",fontSize:10,color:"#F59E0B",background:"rgba(251,191,36,0.08)",padding:"2px 8px",borderRadius:8,fontWeight:600 }}>★ Reward</span>}
           </div>
         </div>
         <Btn primary color={w?.color} small onClick={e => { e.stopPropagation(); startFocus(task.id); }}>Focus</Btn>
@@ -779,10 +738,9 @@ export default function App() {
 
   const fetchProfile = async () => {
     try {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("full_name, date_of_birth, phone, email, address_line1, address_line2, city, state, zip, country")
-        .single();
+      const { data, error } = await supabase.functions.invoke("profile", {
+        body: { action: "read" },
+      });
       if (error) return;
       if (data) {
         setProfileData({
@@ -799,34 +757,81 @@ export default function App() {
         });
         setProfileLoaded(true);
       }
-    } catch (e) { console.error("Failed to load profile:", e); }
+    } catch (e) { logger.error("Failed to load profile:", e); }
   };
 
   const saveProfile = async () => {
+    const emailCheck = validateEmail(profileData.email);
+    if (!emailCheck.valid) { flash(emailCheck.error); return; }
+    const phoneCheck = validatePhone(profileData.phone);
+    if (!phoneCheck.valid) { flash(phoneCheck.error); return; }
     setProfileSaving(true);
     try {
-      const { error } = await supabase
-        .from("profiles")
-        .update({
-          full_name: profileData.full_name || null,
+      const { data, error } = await supabase.functions.invoke("profile", {
+        body: {
+          action: "write",
+          full_name: sanitizeText(profileData.full_name, MAX_NAME) || null,
           date_of_birth: profileData.date_of_birth || null,
-          phone: profileData.phone || null,
-          email: profileData.email || null,
-          address_line1: profileData.address_line1 || null,
-          address_line2: profileData.address_line2 || null,
-          city: profileData.city || null,
-          state: profileData.state || null,
-          zip: profileData.zip || null,
-          country: profileData.country || null,
-        })
-        .eq("id", await getUserId());
+          phone: phoneCheck.value || null,
+          email: emailCheck.value || null,
+          address_line1: sanitizeText(profileData.address_line1, MAX_NAME) || null,
+          address_line2: sanitizeText(profileData.address_line2, MAX_NAME) || null,
+          city: sanitizeText(profileData.city, MAX_NAME) || null,
+          state: sanitizeText(profileData.state, MAX_NAME) || null,
+          zip: sanitizeText(profileData.zip, 20) || null,
+          country: sanitizeText(profileData.country, MAX_NAME) || null,
+        },
+      });
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
       flash("Profile saved!");
     } catch (e) {
-      console.error("Failed to save profile:", e);
+      logger.error("Failed to save profile:", e);
       flash("Failed to save profile");
     } finally {
       setProfileSaving(false);
+    }
+  };
+
+  const exportData = async () => {
+    setExporting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("export-data", {
+        body: {},
+      });
+      if (error) throw error;
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `osvitae-export-${new Date().toISOString().split("T")[0]}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      flash("Data exported!");
+    } catch (e) {
+      logger.error("Export failed:", e);
+      flash("Failed to export data");
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const deleteAccount = async () => {
+    setDeleting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("delete-account", {
+        body: { confirm: true },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      if (navigator.serviceWorker?.controller) {
+        navigator.serviceWorker.controller.postMessage({ type: "CLEAR_CACHE" });
+      }
+      await supabase.auth.signOut();
+    } catch (e) {
+      logger.error("Account deletion failed:", e);
+      flash("Failed to delete account. Please try again.");
+      setDeleting(false);
     }
   };
 
@@ -865,16 +870,22 @@ export default function App() {
       setAppleAppPassword("");
       flash("Apple Calendar connected!");
     } catch (e) {
-      setSyncError(e.message);
+      logger.error("Apple connect error:", e);
+      setSyncError("Connection failed. Please check your credentials and try again.");
     } finally {
       setAppleConnecting(false);
     }
   };
 
   const disconnectApple = async () => {
-    await supabase.functions.invoke("apple-credentials", {
+    const { error } = await supabase.functions.invoke("apple-credentials", {
       body: { action: "disconnect" },
     });
+    if (error) {
+      logger.error("Disconnect failed:", error);
+      flash("Failed to disconnect. Please try again.");
+      return;
+    }
     setAppleConnected(false);
     setAppleCalendars([]);
     setAppleReminderLists([]);
@@ -885,9 +896,14 @@ export default function App() {
   };
 
   const saveCalendarSelection = async () => {
-    await supabase.functions.invoke("apple-credentials", {
+    const { error } = await supabase.functions.invoke("apple-credentials", {
       body: { action: "update", selected_calendar_id: selectedCalendarId },
     });
+    if (error) {
+      logger.error("Save calendar selection failed:", error);
+      flash("Failed to save selection. Please try again.");
+      return;
+    }
     flash("Calendar selection saved!");
   };
 
@@ -902,7 +918,8 @@ export default function App() {
       setAppleCalendars(data.calendars || []);
       setAppleReminderLists(data.reminderLists || []);
     } catch (e) {
-      setSyncError("Load calendars failed: " + e.message);
+      logger.error("Calendar load error:", e);
+      setSyncError("Failed to load calendars. Please try again.");
     }
   };
 
@@ -912,30 +929,23 @@ export default function App() {
 
     // Load all data in parallel
     const [
-      { data: dbBlocks }, { data: dbWorkspaces }, { data: dbTasks },
+      { data: dbBlocks }, { data: dbWorkspaces }, { data: dbProjects }, { data: dbTasks },
       { data: dbSubtasks }, { data: dbTaskNotes },
-      { data: dbContacts }, { data: dbInteractions },
       { data: dbHabits }, { data: dbCompletions },
-      { data: dbGoals },
-      { data: dbBookmarks },
-      { data: dbInbox }, { data: dbTemplates }, { data: dbWiki },
+      { data: dbInbox }, { data: dbWiki },
       { data: dbWsNotes }, { data: dbWsDocs },
       { data: dbTransactions }, { data: dbBills }, { data: dbBillPayments }, { data: dbBudgets },
       { data: dbProfile },
     ] = await Promise.all([
       supabase.from("time_blocks").select("*").eq("user_id", userId),
       supabase.from("workspaces").select("*").eq("user_id", userId).order("position"),
+      supabase.from("projects").select("*").eq("user_id", userId).order("position"),
       supabase.from("tasks").select("*").eq("user_id", userId),
       supabase.from("subtasks").select("*").eq("user_id", userId),
       supabase.from("task_notes").select("*").eq("user_id", userId).order("created_at", { ascending: false }),
-      supabase.from("contacts").select("*").eq("user_id", userId),
-      supabase.from("contact_interactions").select("*").eq("user_id", userId).order("created_at", { ascending: false }),
       supabase.from("habits").select("*").eq("user_id", userId),
       supabase.from("habit_completions").select("*").eq("user_id", userId),
-      supabase.from("goals").select("*").eq("user_id", userId),
-      supabase.from("bookmarks").select("*").eq("user_id", userId),
       supabase.from("inbox_items").select("*").eq("user_id", userId).order("created_at", { ascending: false }),
-      supabase.from("templates").select("*").eq("user_id", userId),
       supabase.from("wiki_articles").select("*").eq("user_id", userId),
       supabase.from("workspace_notes").select("*").eq("user_id", userId),
       supabase.from("workspace_docs").select("*").eq("user_id", userId),
@@ -943,7 +953,7 @@ export default function App() {
       supabase.from("bills").select("*").eq("user_id", userId),
       supabase.from("bill_payments").select("*").eq("user_id", userId),
       supabase.from("budgets").select("*").eq("user_id", userId),
-      supabase.from("profiles").select("intention_text, xp, level, streak, total_pomos_ever, total_tasks_done").eq("id", userId).single(),
+      supabase.from("profiles").select("intention_text, reward_text, xp, level, streak, total_pomos_ever, total_tasks_done").eq("id", userId).single(),
     ]);
 
     if (dbBlocks) {
@@ -956,6 +966,12 @@ export default function App() {
     if (dbWorkspaces) {
       setWorkspaces(dbWorkspaces.map(w => ({
         id: w.id, name: w.name, icon: w.icon || "Folder", color: w.color || "#5B8DEF",
+      })));
+    }
+    if (dbProjects) {
+      setProjects(dbProjects.map(p => ({
+        id: p.id, name: p.name, icon: p.icon || "Folder", color: p.color || "#5B8DEF",
+        wsId: p.workspace_id,
       })));
     }
 
@@ -976,27 +992,12 @@ export default function App() {
         id: t.id, title: t.title, desc: t.description || "",
         description: t.description || "",
         priority: t.priority || "medium", done: t.done || false,
+        status: t.status || (t.done ? "done" : "todo"),
         dueDate: t.due_date, dueTime: t.due_time, section: t.section || "afternoon",
         externalId: t.external_id, caldav_href: t.caldav_href, caldav_etag: t.caldav_etag,
         subtasks: subtasksByTask[t.id] || [], notes: notesByTask[t.id] || [],
         attachments: [], donePomos: t.done_pomos || 0, totalPomos: t.total_pomos || 0,
-        wsId: t.workspace_id || null, tags: [],
-      })));
-    }
-
-    // Build interaction map for contacts
-    const interactionsByContact = {};
-    (dbInteractions || []).forEach(i => {
-      if (!interactionsByContact[i.contact_id]) interactionsByContact[i.contact_id] = [];
-      interactionsByContact[i.contact_id].push({ id: i.id, type: i.type, text: i.text, date: i.interaction_date || new Date(i.created_at).toLocaleDateString() });
-    });
-    if (dbContacts) {
-      setContacts(dbContacts.map(c => ({
-        id: c.id, name: c.name, email: c.email || "", phone: c.phone || null,
-        context: c.context || null, tags: c.tags || [], health: c.health || "strong",
-        lastContact: c.last_contact_at ? new Date(c.last_contact_at).toLocaleDateString() : "Never",
-        nextFollowUp: c.next_follow_up, notes: c.notes || "",
-        interactions: interactionsByContact[c.id] || [],
+        wsId: t.workspace_id || null, projectId: t.project_id || null, tags: [],
       })));
     }
 
@@ -1009,38 +1010,16 @@ export default function App() {
     if (dbHabits) {
       setHabits(dbHabits.map(h => ({
         id: h.id, name: h.name, icon: h.icon || "Star", color: h.color || "#5B8DEF",
-        frequency: h.frequency || "daily", streak: h.streak || 0,
+        frequency: h.frequency || "daily", scheduleDays: h.schedule_days || null,
+        streak: h.streak || 0,
         completions: completionsByHabit[h.id] || [],
       })));
     }
-
-    if (dbGoals) {
-      setGoals(dbGoals.map(g => ({
-        id: g.id, title: g.title, quarter: g.quarter || "", status: g.status || "in-progress",
-        progress: g.progress || 0, keyResults: [], linkedTaskIds: [],
-      })));
-    }
-
-    if (dbBookmarks) {
-      setBookmarks(dbBookmarks.map(b => ({
-        id: b.id, title: b.title, url: b.url || "", description: b.description || "",
-        tags: b.tags || [], wsId: b.workspace_id || null,
-        createdAt: new Date(b.created_at).toLocaleDateString(),
-      })));
-    }
-
 
     if (dbInbox) {
       setInbox(dbInbox.map(i => ({
         id: i.id, text: i.text, triaged: i.triaged || false,
         createdAt: new Date(i.created_at).toLocaleDateString(),
-      })));
-    }
-
-    if (dbTemplates) {
-      setTemplates(dbTemplates.map(t => ({
-        id: t.id, name: t.name, category: t.category || "General",
-        description: t.description || "", items: t.items || [],
       })));
     }
 
@@ -1095,6 +1074,7 @@ export default function App() {
 
     if (dbProfile) {
       if (dbProfile.intention_text) setIntentionText(dbProfile.intention_text);
+      if (dbProfile.reward_text) setRewardText(dbProfile.reward_text);
       if (dbProfile.xp != null) setXp(dbProfile.xp);
       if (dbProfile.level != null) setLevel(dbProfile.level);
       if (dbProfile.streak != null) setStreak(dbProfile.streak);
@@ -1144,7 +1124,7 @@ export default function App() {
       const userId = await getUserId();
       if (userId) {
         const { error } = await supabase.from("profiles").update({ xp, level, streak, total_pomos_ever: totalPomosEver, total_tasks_done: totalTasksDone }).eq("id", userId);
-        if (error) console.error("Stats save failed:", error);
+        if (error) logger.error("Stats save failed:", error);
       }
     }, 2000);
     return () => clearTimeout(timer);
@@ -1160,22 +1140,17 @@ export default function App() {
       allTasks: <><span onClick={goToday} style={{ cursor:"pointer" }}>{homeIcon}</span> / <strong style={{ color:"var(--text)" }}>All Tasks</strong></>,
       timer: <><span onClick={goToday} style={{ cursor:"pointer" }}>{homeIcon}</span> / <strong style={{ color:"var(--text)" }}>Focus Timer</strong></>,
       rewards: <><span onClick={goToday} style={{ cursor:"pointer" }}>{homeIcon}</span> / <strong style={{ color:"var(--text)" }}>Rewards</strong></>,
-      contacts: <><span onClick={goToday} style={{ cursor:"pointer" }}>{homeIcon}</span> / <strong style={{ color:"var(--text)" }}>Contacts</strong></>,
-      contactDetail: <><span onClick={goToday} style={{ cursor:"pointer" }}>{homeIcon}</span> / <span onClick={() => setPage("contacts")} style={{ cursor:"pointer" }}>Contacts</span> / <strong style={{ color:"var(--text)" }}>{activeContact?.name}</strong></>,
       habits: <><span onClick={goToday} style={{ cursor:"pointer" }}>{homeIcon}</span> / <strong style={{ color:"var(--text)" }}>Habits</strong></>,
-      goals: <><span onClick={goToday} style={{ cursor:"pointer" }}>{homeIcon}</span> / <strong style={{ color:"var(--text)" }}>Goals</strong></>,
       calendar: <><span onClick={goToday} style={{ cursor:"pointer" }}>{homeIcon}</span> / <strong style={{ color:"var(--text)" }}>Calendar</strong></>,
-      bookmarks: <><span onClick={goToday} style={{ cursor:"pointer" }}>{homeIcon}</span> / <strong style={{ color:"var(--text)" }}>Bookmarks</strong></>,
       finance: <><span onClick={goToday} style={{ cursor:"pointer" }}>{homeIcon}</span> / <strong style={{ color:"var(--text)" }}>Finance</strong></>,
       review: <><span onClick={goToday} style={{ cursor:"pointer" }}>{homeIcon}</span> / <strong style={{ color:"var(--text)" }}>Weekly Review</strong></>,
       inbox: <><span onClick={goToday} style={{ cursor:"pointer" }}>{homeIcon}</span> / <strong style={{ color:"var(--text)" }}>Inbox</strong></>,
-      templates: <><span onClick={goToday} style={{ cursor:"pointer" }}>{homeIcon}</span> / <strong style={{ color:"var(--text)" }}>Templates</strong></>,
-      scratchpad: <><span onClick={goToday} style={{ cursor:"pointer" }}>{homeIcon}</span> / <strong style={{ color:"var(--text)" }}>Scratchpad</strong></>,
       wiki: <><span onClick={goToday} style={{ cursor:"pointer" }}>{homeIcon}</span> / <strong style={{ color:"var(--text)" }}>Wiki</strong></>,
       wikiArticle: <><span onClick={goToday} style={{ cursor:"pointer" }}>{homeIcon}</span> / <span onClick={() => setPage("wiki")} style={{ cursor:"pointer" }}>Wiki</span> / <strong style={{ color:"var(--text)" }}>{activeWiki?.title}</strong></>,
     };
     if (page === "workspace") return <><span onClick={goToday} style={{ cursor:"pointer" }}>{homeIcon}</span> / <strong style={{ color:activeWs?.color }}>{activeWs?.name}</strong></>;
-    if (page === "task" && activeTask) { const w = ws.find(x=>x.id===activeTask.wsId); return <><span onClick={goToday} style={{ cursor:"pointer" }}>{homeIcon}</span> / <span onClick={() => goWs(activeTask.wsId)} style={{ cursor:"pointer",color:w?.color }}>{w?.name}</span> / <strong style={{ color:"var(--text)" }}>{activeTask.title}</strong></>; }
+    if (page === "project" && activeProject) { const w = ws.find(x=>x.id===activeProject.wsId); return <><span onClick={goToday} style={{ cursor:"pointer" }}>{homeIcon}</span> / <span onClick={() => goWs(activeProject.wsId)} style={{ cursor:"pointer",color:w?.color }}>{w?.name}</span> / <strong style={{ color:activeProject.color }}>{activeProject.name}</strong></>; }
+    if (page === "task" && activeTask) { const w = ws.find(x=>x.id===activeTask.wsId); const p = projects.find(x=>x.id===activeTask.projectId); return <><span onClick={goToday} style={{ cursor:"pointer" }}>{homeIcon}</span>{w && <> / <span onClick={() => goWs(activeTask.wsId)} style={{ cursor:"pointer",color:w?.color }}>{w?.name}</span></>}{p && <> / <span onClick={() => goProject(p.id)} style={{ cursor:"pointer",color:p.color }}>{p.name}</span></>} / <strong style={{ color:"var(--text)" }}>{activeTask.title}</strong></>; }
     return crumbs[page] || null;
   };
 
@@ -1190,7 +1165,6 @@ export default function App() {
       transition:"background 0.3s ease",position:"relative",
     }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
         *{box-sizing:border-box;margin:0;padding:0}
         @keyframes slideUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
         @keyframes fadeIn{from{opacity:0}to{opacity:1}}
@@ -1206,6 +1180,7 @@ export default function App() {
         .glass-orb-4{width:250px;height:250px;background:radial-gradient(circle,#14b8a6,transparent 70%);top:20%;right:35%;animation:orbFloat1 28s ease-in-out infinite reverse}
         ::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--scrollbar-thumb);border-radius:3px}
         textarea:focus,input:focus{border-color:var(--focus-border)!important;box-shadow:var(--focus-shadow)!important}
+        @media(pointer:coarse){[data-action]{opacity:0.7!important}}
 
         /* ── Mobile responsive ── */
         .mobile-hamburger{display:none}
@@ -1310,13 +1285,13 @@ export default function App() {
         <div className="mobile-sidebar-overlay" style={{ position:"fixed",inset:0,zIndex:50 }}>
           <div onClick={() => setShowMobileSidebar(false)} style={{ position:"absolute",inset:0,background:"var(--overlay-heavy)",backdropFilter:"blur(2px)" }} />
           <div className="mobile-sidebar-panel" style={{ position:"relative",width:"min(280px, calc(100vw - 60px))",height:"100%",zIndex:51,paddingTop:"env(safe-area-inset-top)",paddingBottom:"env(safe-area-inset-bottom)" }}>
-            <Sidebar collapsed={collapsed} setCollapsed={setCollapsed} page={page} setPage={setPage} themeName={themeName} toggleTheme={toggleTheme} timerActive={timerActive} timeLeft={timeLeft} fmt={fmt} inbox={inbox} ws={ws} tasks={tasks} activeWsId={activeWsId} goWs={goWs} goToday={goToday} sidebarSections={sidebarSections} setSidebarSections={setSidebarSections} setShowNewWs={setShowNewWs} setShowMobileSidebar={setShowMobileSidebar} setTimerTaskId={setTimerTaskId} />
+            <Sidebar collapsed={collapsed} setCollapsed={setCollapsed} page={page} setPage={setPage} themeName={themeName} toggleTheme={toggleTheme} timerActive={timerActive} timeLeft={timeLeft} fmt={fmt} inbox={inbox} ws={ws} tasks={tasks} projects={projects} activeWsId={activeWsId} activeProjectId={activeProjectId} goWs={goWs} goProject={goProject} goToday={goToday} sidebarSections={sidebarSections} setSidebarSections={setSidebarSections} setShowNewWs={setShowNewWs} setShowNewProject={setShowNewProject} setNewProjectWsId={setNewProjectWsId} setShowMobileSidebar={setShowMobileSidebar} setTimerTaskId={setTimerTaskId} />
           </div>
         </div>
       )}
 
       <div className="sidebar-desktop">
-        <Sidebar collapsed={collapsed} setCollapsed={setCollapsed} page={page} setPage={setPage} themeName={themeName} toggleTheme={toggleTheme} timerActive={timerActive} timeLeft={timeLeft} fmt={fmt} inbox={inbox} ws={ws} tasks={tasks} activeWsId={activeWsId} goWs={goWs} goToday={goToday} sidebarSections={sidebarSections} setSidebarSections={setSidebarSections} setShowNewWs={setShowNewWs} setShowMobileSidebar={setShowMobileSidebar} setTimerTaskId={setTimerTaskId} />
+        <Sidebar collapsed={collapsed} setCollapsed={setCollapsed} page={page} setPage={setPage} themeName={themeName} toggleTheme={toggleTheme} timerActive={timerActive} timeLeft={timeLeft} fmt={fmt} inbox={inbox} ws={ws} tasks={tasks} projects={projects} activeWsId={activeWsId} activeProjectId={activeProjectId} goWs={goWs} goProject={goProject} goToday={goToday} sidebarSections={sidebarSections} setSidebarSections={setSidebarSections} setShowNewWs={setShowNewWs} setShowNewProject={setShowNewProject} setNewProjectWsId={setNewProjectWsId} setShowMobileSidebar={setShowMobileSidebar} setTimerTaskId={setTimerTaskId} />
       </div>
 
       <div style={{ flex:1,display:"flex",flexDirection:"column",overflow:"hidden" }}>
@@ -1325,7 +1300,7 @@ export default function App() {
           display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 16px",gap:10,
           background:"var(--card-bg)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",borderBottom:"1px solid var(--border-light)",transition:"background 0.3s ease",flexShrink:0,
         }}>
-          <div className="mobile-hamburger" onClick={() => { setSidebarSections({ home: true, track: true, library: true, workspaces: true }); setShowMobileSidebar(true); }} style={{ width:36,height:36,borderRadius:10,background:"var(--subtle-bg)",alignItems:"center",justifyContent:"center",cursor:"pointer",flexShrink:0 }}><Menu size={18} /></div>
+          <div className="mobile-hamburger" onClick={() => setShowMobileSidebar(true)} style={{ width:36,height:36,borderRadius:10,background:"var(--subtle-bg)",alignItems:"center",justifyContent:"center",cursor:"pointer",flexShrink:0 }}><Menu size={18} /></div>
           <span className="topbar-breadcrumb" style={{ fontFamily:"var(--body)",fontSize:13,color:"var(--muted)" }}>{breadcrumb()}</span>
           <div style={{ display:"flex",alignItems:"center",gap:10,flex:1,justifyContent:"flex-end" }}>
             <div className="topbar-search" onClick={() => setShowSearch(true)} style={{ background:"var(--subtle-bg)",borderRadius:10,padding:"7px 14px",fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",display:"flex",alignItems:"center",gap:6,cursor:"pointer",border:"1px solid var(--subtle-bg)" }}><Search size={14} /> Search...</div>
@@ -1343,32 +1318,28 @@ export default function App() {
           </div>
         </div>
 
-        <div className="main-content" style={{ flex:1,overflow: page === "scratchpad" ? "hidden" : "auto",padding: page === "timer" || page === "scratchpad" ? "28px 28px" : "24px 28px", minHeight: 0, display:"flex", flexDirection:"column" }}>
-          {page === "today" && <TodayPage greeting={greeting} totalTasks={totalTasks} doneTasks={doneTasks} totalPomos={totalPomos} donePomos={donePomos} habits={habits} toggleHabit={toggleHabit} streak={streak} themeName={themeName} timerActive={timerActive} timeLeft={timeLeft} fmt={fmt} setTimerTaskId={setTimerTaskId} setPage={setPage} tasks={tasks} goTask={goTask} TaskRow={TaskRow} inbox={inbox} contacts={contacts} goContact={goContact} intentionText={intentionText} setIntentionText={setIntentionText} editingIntention={editingIntention} setEditingIntention={setEditingIntention} setNewTaskWs={setNewTaskWs} setShowNewTask={setShowNewTask} flash={flash} inputStyle={inputStyle} />}
-          {page === "workspace" && <WorkspacePage activeWs={activeWs} activeWsId={activeWsId} tasks={tasks} wsNotes={wsNotes} wsDocs={wsDocs} wsTab={wsTab} setWsTab={setWsTab} setNewTaskWs={setNewTaskWs} setShowNewTask={setShowNewTask} setShowWsNote={setShowWsNote} setShowWsDoc={setShowWsDoc} deleteWorkspace={deleteWorkspace} deleteWsNote={deleteWsNote} deleteWsDoc={deleteWsDoc} goTask={goTask} TaskRow={TaskRow} />}
+        <div className="main-content" style={{ flex:1,overflow:"auto",padding: page === "timer" ? "28px 28px" : "24px 28px", minHeight: 0, display:"flex", flexDirection:"column" }}>
+          {page === "today" && <TodayPage greeting={greeting} totalTasks={totalTasks} doneTasks={doneTasks} totalPomos={totalPomos} donePomos={donePomos} habits={habits} toggleHabit={toggleHabit} streak={streak} themeName={themeName} timerActive={timerActive} timeLeft={timeLeft} fmt={fmt} setTimerTaskId={setTimerTaskId} setPage={setPage} tasks={tasks} goTask={goTask} TaskRow={TaskRow} inbox={inbox} intentionText={intentionText} setIntentionText={setIntentionText} editingIntention={editingIntention} setEditingIntention={setEditingIntention} setNewTaskWs={setNewTaskWs} setShowNewTask={setShowNewTask} flash={flash} inputStyle={inputStyle} timeBlocks={timeBlocks} updateTimeBlock={updateTimeBlock} setShowNewBlock={setShowNewBlock} deleteTimeBlock={deleteTimeBlock} setEditingBlock={setEditingBlock} rewardText={rewardText} setRewardText={setRewardText} editingReward={editingReward} setEditingReward={setEditingReward} />}
+          {page === "workspace" && <WorkspacePage activeWs={activeWs} activeWsId={activeWsId} tasks={tasks} projects={projects} wsNotes={wsNotes} wsDocs={wsDocs} wsTab={wsTab} setWsTab={setWsTab} setNewTaskWs={setNewTaskWs} setNewTaskProject={setNewTaskProject} setShowNewTask={setShowNewTask} setShowWsNote={setShowWsNote} setShowWsDoc={setShowWsDoc} deleteWorkspace={deleteWorkspace} deleteWsNote={deleteWsNote} deleteWsDoc={deleteWsDoc} goTask={goTask} goProject={goProject} setShowNewProject={setShowNewProject} setNewProjectWsId={setNewProjectWsId} deleteProject={deleteProject} TaskRow={TaskRow} />}
+          {page === "project" && <ProjectPage activeProject={activeProject} activeProjectId={activeProjectId} activeWs={activeWs} tasks={tasks} wsNotes={wsNotes} wsDocs={wsDocs} setNewTaskWs={setNewTaskWs} setNewTaskProject={setNewTaskProject} setShowNewTask={setShowNewTask} setShowWsNote={setShowWsNote} setShowWsDoc={setShowWsDoc} deleteProject={deleteProject} deleteWsNote={deleteWsNote} deleteWsDoc={deleteWsDoc} goTask={goTask} goWs={goWs} TaskRow={TaskRow} />}
           {page === "task" && <TaskDetailPage activeTask={activeTask} ws={ws} pColors={pColors} setPage={setPage} page={page} startFocus={startFocus} toggleTask={toggleTask} toggleSubtask={toggleSubtask} setEditingTask={setEditingTask} deleteTask={deleteTask} setShowNewNote={setShowNewNote} deleteTaskNote={deleteTaskNote} flash={flash} />}
           {page === "timer" && <TimerPage timerTask={timerTask} ws={ws} timeLeft={timeLeft} setTimeLeft={setTimeLeft} timerActive={timerActive} setTimerActive={setTimerActive} isBreak={isBreak} setIsBreak={setIsBreak} sessionCount={sessionCount} endTimeRef={endTimeRef} WORK_DURATION={WORK_DURATION} SHORT_BREAK={SHORT_BREAK} LONG_BREAK={LONG_BREAK} CYCLE_LENGTH={CYCLE_LENGTH} fmt={fmt} goToday={goToday} flash={flash} streak={streak} themeName={themeName} />}
           {page === "rewards" && <RewardsPage level={level} xp={xp} themeName={themeName} streak={streak} totalPomosEver={totalPomosEver} donePomos={donePomos} doneTasks={doneTasks} totalTasksDone={totalTasksDone} />}
-          {page === "allTasks" && <AllTasksPage filteredTasks={filteredTasks} setShowNewTask={setShowNewTask} TaskRow={TaskRow} />}
-          {page === "contacts" && <ContactsPage contacts={contacts} setShowNewContact={setShowNewContact} goContact={goContact} />}
-          {page === "contactDetail" && <ContactDetailPage activeContact={activeContact} setPage={setPage} deleteContact={deleteContact} setShowNewInteraction={setShowNewInteraction} setEditingContact={setEditingContact} />}
+          {page === "allTasks" && <AllTasksPage filteredTasks={filteredTasks} setShowNewTask={setShowNewTask} TaskRow={TaskRow} ws={ws} projects={projects} pColors={pColors} goTask={goTask} toggleTask={toggleTask} deleteTask={deleteTask} startFocus={startFocus} updateTaskStatus={updateTaskStatus} updateTaskField={updateTaskField} />}
           {page === "habits" && <HabitsPage habits={habits} setShowNewHabit={setShowNewHabit} toggleHabit={toggleHabit} deleteHabit={deleteHabit} setEditingHabit={setEditingHabit} />}
-          {page === "goals" && <GoalsPage goals={goals} setShowNewGoal={setShowNewGoal} expandedGoals={expandedGoals} setExpandedGoals={setExpandedGoals} deleteGoal={deleteGoal} setEditingGoal={setEditingGoal} tasks={tasks} goTask={goTask} />}
-          {page === "calendar" && <CalendarPage timeBlocks={timeBlocks} setShowNewBlock={setShowNewBlock} deleteTimeBlock={deleteTimeBlock} setEditingBlock={setEditingBlock} goTask={goTask} />}
-          {page === "bookmarks" && <BookmarksPage bookmarks={bookmarks} ws={ws} setShowNewBookmark={setShowNewBookmark} deleteBookmark={deleteBookmark} setEditingBookmark={setEditingBookmark} />}
+          {page === "calendar" && <CalendarPage timeBlocks={timeBlocks} setShowNewBlock={setShowNewBlock} deleteTimeBlock={deleteTimeBlock} setEditingBlock={setEditingBlock} goTask={goTask} updateTimeBlock={updateTimeBlock} />}
           {page === "finance" && <FinancePage transactions={transactions} financeTab={financeTab} setFinanceTab={setFinanceTab} setShowNewTransaction={setShowNewTransaction} deleteTransaction={deleteTransaction} setEditingTransaction={setEditingTransaction} saveBudget={saveBudget} addIncome={addIncome} togglePaid={togglePaid} addBill={addBill} deleteBill={deleteBill} setEditingBill={setEditingBill} budgets={budgets} editingBudget={editingBudget} setEditingBudget={setEditingBudget} editBudgetVal={editBudgetVal} setEditBudgetVal={setEditBudgetVal} newIncomeCategory={newIncomeCategory} setNewIncomeCategory={setNewIncomeCategory} newIncomeAmount={newIncomeAmount} setNewIncomeAmount={setNewIncomeAmount} newIncomeDesc={newIncomeDesc} setNewIncomeDesc={setNewIncomeDesc} newIncomeRecurring={newIncomeRecurring} setNewIncomeRecurring={setNewIncomeRecurring} bills={bills} billPayments={billPayments} newBillName={newBillName} setNewBillName={setNewBillName} newBillAmount={newBillAmount} setNewBillAmount={setNewBillAmount} newBillDueDay={newBillDueDay} setNewBillDueDay={setNewBillDueDay} newBillCategory={newBillCategory} setNewBillCategory={setNewBillCategory} inputStyle={inputStyle} />}
-          {page === "review" && <ReviewPage tasks={tasks} contacts={contacts} inbox={inbox} habits={habits} goals={goals} toggleHabit={toggleHabit} goTask={goTask} goContact={goContact} pColors={pColors} />}
+          {page === "review" && <ReviewPage tasks={tasks} inbox={inbox} habits={habits} toggleHabit={toggleHabit} goTask={goTask} pColors={pColors} />}
           {page === "inbox" && <InboxPage inbox={inbox} newInboxText={newInboxText} setNewInboxText={setNewInboxText} addInboxItem={addInboxItem} triageInbox={triageInbox} dismissInbox={dismissInbox} updateInboxItem={updateInboxItem} setTasks={setTasks} flash={flash} inputStyle={inputStyle} />}
-          {page === "templates" && <TemplatesPage templates={templates} setShowNewTemplate={setShowNewTemplate} useTemplate={useTemplate} deleteTemplate={deleteTemplate} />}
           {page === "wiki" && <WikiPage wiki={wiki} setShowNewWiki={setShowNewWiki} goWiki={goWiki} />}
           {page === "wikiArticle" && <WikiArticlePage activeWiki={activeWiki} setPage={setPage} editingWiki={editingWiki} setEditingWiki={setEditingWiki} editWikiContent={editWikiContent} setEditWikiContent={setEditWikiContent} saveWikiEdit={saveWikiEdit} deleteWikiArticle={deleteWikiArticle} inputStyle={inputStyle} />}
-          {page === "scratchpad" && <ScratchpadPage canvasRef={canvasRef} eraserMode={eraserMode} setEraserMode={setEraserMode} penColor={penColor} setPenColor={setPenColor} penSize={penSize} setPenSize={setPenSize} undoCanvas={undoCanvas} clearCanvas={clearCanvas} downloadCanvas={downloadCanvas} handleCanvasPointerDown={handleCanvasPointerDown} handleCanvasPointerMove={handleCanvasPointerMove} handleCanvasPointerUp={handleCanvasPointerUp} />}
-          {page === "settings" && <SettingsPage profileData={profileData} setProfileData={setProfileData} saveProfile={saveProfile} profileSaving={profileSaving} themeName={themeName} appleConnected={appleConnected} showAppleConnect={showAppleConnect} setShowAppleConnect={setShowAppleConnect} appleIdInput={appleIdInput} setAppleIdInput={setAppleIdInput} appleAppPassword={appleAppPassword} setAppleAppPassword={setAppleAppPassword} appleConnecting={appleConnecting} connectApple={connectApple} syncError={syncError} setSyncError={setSyncError} appleCalendars={appleCalendars} selectedCalendarId={selectedCalendarId} setSelectedCalendarId={setSelectedCalendarId} saveCalendarSelection={saveCalendarSelection} rediscoverCalendars={rediscoverCalendars} syncAll={syncAll} syncStatus={syncStatus} lastSyncAt={lastSyncAt} disconnectApple={disconnectApple} inputStyle={inputStyle} />}
+          {page === "settings" && <SettingsPage profileData={profileData} setProfileData={setProfileData} saveProfile={saveProfile} profileSaving={profileSaving} themeName={themeName} appleConnected={appleConnected} showAppleConnect={showAppleConnect} setShowAppleConnect={setShowAppleConnect} appleIdInput={appleIdInput} setAppleIdInput={setAppleIdInput} appleAppPassword={appleAppPassword} setAppleAppPassword={setAppleAppPassword} appleConnecting={appleConnecting} connectApple={connectApple} syncError={syncError} setSyncError={setSyncError} appleCalendars={appleCalendars} selectedCalendarId={selectedCalendarId} setSelectedCalendarId={setSelectedCalendarId} saveCalendarSelection={saveCalendarSelection} rediscoverCalendars={rediscoverCalendars} syncAll={syncAll} syncStatus={syncStatus} lastSyncAt={lastSyncAt} disconnectApple={disconnectApple} exportData={exportData} exporting={exporting} deleteAccount={deleteAccount} deleting={deleting} inputStyle={inputStyle} />}
         </div>
       </div>
 
       {/* ─── MODALS ─── */}
       <Modal open={showNewTask} onClose={() => setShowNewTask(false)} title="New Task">
+        <div style={{ maxHeight:"70vh",overflowY:"auto",paddingRight:4 }}>
         <div style={{ marginBottom:14 }}>
           <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>Title</label>
           <input value={newTaskTitle} onChange={e => setNewTaskTitle(e.target.value)} placeholder="What needs to be done?" style={inputStyle} autoFocus />
@@ -1377,7 +1348,7 @@ export default function App() {
           <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>Description</label>
           <textarea value={newTaskDesc} onChange={e => setNewTaskDesc(e.target.value)} placeholder="Add details..." style={{ ...inputStyle, minHeight:70, resize:"vertical" }} />
         </div>
-        <div style={{ display:"flex",gap:14,marginBottom:20 }}>
+        <div style={{ display:"flex",gap:14,marginBottom:14 }}>
           <div style={{ flex:1 }}>
             <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>Priority</label>
             <div style={{ display:"flex",gap:6 }}>
@@ -1396,7 +1367,7 @@ export default function App() {
             <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>Workspace</label>
             <div style={{ display:"flex",gap:6,flexWrap:"wrap" }}>
               {ws.map(w => (
-                <div key={w.id} onClick={() => setNewTaskWs(w.id)} style={{
+                <div key={w.id} onClick={() => { setNewTaskWs(w.id); setNewTaskProject(null); }} style={{
                   padding:"6px 12px",borderRadius:10,cursor:"pointer",
                   background: newTaskWs === w.id ? `${w.color}18` : "var(--hover-bg)",
                   border: newTaskWs === w.id ? `2px solid ${w.color}` : "2px solid transparent",
@@ -1407,14 +1378,87 @@ export default function App() {
             </div>
           </div>
         </div>
-        <div style={{ display:"flex",justifyContent:"flex-end",gap:10 }}>
+        {newTaskWs && projects.filter(p => p.wsId === newTaskWs).length > 0 && (
+        <div style={{ marginBottom:14 }}>
+          <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>Project</label>
+          <div style={{ display:"flex",gap:6,flexWrap:"wrap" }}>
+            {projects.filter(p => p.wsId === newTaskWs).map(p => (
+              <div key={p.id} onClick={() => setNewTaskProject(p.id)} style={{
+                padding:"6px 12px",borderRadius:10,cursor:"pointer",
+                background: newTaskProject === p.id ? `${p.color}18` : "var(--hover-bg)",
+                border: newTaskProject === p.id ? `2px solid ${p.color}` : "2px solid transparent",
+                fontFamily:"var(--body)",fontSize:11,fontWeight:600,color:newTaskProject===p.id?p.color:"var(--muted)",
+                transition:"all 0.15s",display:"flex",alignItems:"center",gap:4,
+              }}>{getWsIcon(p.icon, 11)} {p.name}</div>
+            ))}
+          </div>
+        </div>
+        )}
+        <div style={{ display:"flex",gap:14,marginBottom:14 }}>
+          <div style={{ flex:1 }}>
+            <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>Due Date</label>
+            <input type="date" value={newTaskDueDate} onChange={e => setNewTaskDueDate(e.target.value)} style={inputStyle} />
+          </div>
+          <div style={{ flex:1 }}>
+            <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>Due Time</label>
+            <input type="time" value={newTaskDueTime} onChange={e => setNewTaskDueTime(e.target.value)} style={inputStyle} />
+          </div>
+        </div>
+        <div style={{ display:"flex",gap:14,marginBottom:14 }}>
+          <div style={{ flex:1 }}>
+            <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>Section</label>
+            <div style={{ display:"flex",gap:6 }}>
+              {["morning","afternoon","evening"].map(s => (
+                <div key={s} onClick={() => setNewTaskSection(s)} style={{
+                  flex:1,padding:"8px 0",textAlign:"center",borderRadius:10,cursor:"pointer",
+                  background: newTaskSection === s ? "var(--primary-bg)" : "var(--hover-bg)",
+                  border: newTaskSection === s ? "2px solid var(--primary)" : "2px solid transparent",
+                  fontFamily:"var(--body)",fontSize:11,fontWeight:600,color:newTaskSection===s?"var(--primary)":"var(--muted)",
+                  textTransform:"capitalize",transition:"all 0.15s",
+                }}>{s === "morning" ? "AM" : s === "afternoon" ? "PM" : "EVE"}</div>
+              ))}
+            </div>
+          </div>
+          <div style={{ flex:1 }}>
+            <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>Pomodoros</label>
+            <div style={{ display:"flex",alignItems:"center",gap:8 }}>
+              <div onClick={() => setNewTaskPomos(Math.max(1, newTaskPomos - 1))} style={{ width:32,height:32,borderRadius:8,background:"var(--hover-bg)",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontFamily:"var(--body)",fontSize:16,fontWeight:700,color:"var(--muted)",userSelect:"none" }}>−</div>
+              <span style={{ fontFamily:"var(--mono)",fontSize:14,fontWeight:700,color:"var(--text)",minWidth:20,textAlign:"center" }}>{newTaskPomos}</span>
+              <div onClick={() => setNewTaskPomos(Math.min(12, newTaskPomos + 1))} style={{ width:32,height:32,borderRadius:8,background:"var(--hover-bg)",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontFamily:"var(--body)",fontSize:16,fontWeight:700,color:"var(--muted)",userSelect:"none" }}>+</div>
+            </div>
+          </div>
+        </div>
+        <div style={{ marginBottom:14 }}>
+          <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>Steps</label>
+          <div style={{ display:"flex",gap:8,marginBottom:8 }}>
+            <input value={newSubtaskText} onChange={e => setNewSubtaskText(e.target.value)} placeholder="Add a step..." style={{ ...inputStyle, flex:1 }}
+              onKeyDown={e => { if (e.key === "Enter" && newSubtaskText.trim()) { setNewTaskSubtasks(prev => [...prev, newSubtaskText.trim()]); setNewSubtaskText(""); }}} />
+            <Btn small onClick={() => { if (newSubtaskText.trim()) { setNewTaskSubtasks(prev => [...prev, newSubtaskText.trim()]); setNewSubtaskText(""); }}}>Add</Btn>
+          </div>
+          {newTaskSubtasks.map((st, i) => (
+            <div key={i} style={{ display:"flex",alignItems:"center",gap:10,padding:"8px 12px",background:"var(--input-bg)",borderRadius:8,marginBottom:4,border:"1px solid var(--border-light)" }}>
+              <span style={{ fontFamily:"var(--mono)",fontSize:11,color:"var(--muted)",fontWeight:600 }}>{i+1}.</span>
+              <span style={{ flex:1,fontFamily:"var(--body)",fontSize:13,color:"var(--text)" }}>{st}</span>
+              <div onClick={() => setNewTaskSubtasks(prev => prev.filter((_, j) => j !== i))} style={{ cursor:"pointer",color:"var(--muted)",display:"flex",alignItems:"center" }}
+                onMouseEnter={e => e.currentTarget.style.color="#EF4444"} onMouseLeave={e => e.currentTarget.style.color="var(--muted)"}
+              ><X size={14} /></div>
+            </div>
+          ))}
+        </div>
+        <div style={{ marginBottom:20 }}>
+          <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>Reward (after completing)</label>
+          <input value={newTaskReward} onChange={e => setNewTaskReward(e.target.value)} placeholder="e.g. Coffee break, 15 min gaming..." style={inputStyle} />
+        </div>
+        </div>
+        <div style={{ display:"flex",justifyContent:"flex-end",gap:10,paddingTop:10,borderTop:"1px solid var(--border-light)" }}>
           <Btn onClick={() => setShowNewTask(false)}>Cancel</Btn>
           <Btn primary onClick={createTask}>Create Task</Btn>
         </div>
       </Modal>
 
-      <Modal open={!!editingTask} onClose={() => setEditingTask(null)} title="Edit Task">
+      <Modal open={!!editingTask} onClose={() => { setEditingTask(null); setEditSubtaskText(""); }} title="Edit Task">
         {editingTask && (<>
+        <div style={{ maxHeight:"70vh",overflowY:"auto",paddingRight:4 }}>
         <div style={{ marginBottom:14 }}>
           <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>Title</label>
           <input value={editingTask.title} onChange={e => setEditingTask({ ...editingTask, title: e.target.value })} style={inputStyle} autoFocus />
@@ -1423,21 +1467,67 @@ export default function App() {
           <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>Description</label>
           <textarea value={editingTask.desc || ""} onChange={e => setEditingTask({ ...editingTask, desc: e.target.value })} style={{ ...inputStyle, minHeight:70, resize:"vertical" }} />
         </div>
+        <div style={{ display:"flex",gap:14,marginBottom:14 }}>
+          <div style={{ flex:1 }}>
+            <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>Priority</label>
+            <div style={{ display:"flex",gap:6 }}>
+              {["low","medium","high"].map(p => (
+                <div key={p} onClick={() => setEditingTask({ ...editingTask, priority: p })} style={{
+                  flex:1,padding:"8px 0",textAlign:"center",borderRadius:10,cursor:"pointer",
+                  background: editingTask.priority === p ? `${pColors[p]}18` : "var(--hover-bg)",
+                  border: editingTask.priority === p ? `2px solid ${pColors[p]}` : "2px solid transparent",
+                  fontFamily:"var(--body)",fontSize:12,fontWeight:600,color:editingTask.priority===p?pColors[p]:"var(--muted)",
+                  textTransform:"capitalize",transition:"all 0.15s",
+                }}>{p}</div>
+              ))}
+            </div>
+          </div>
+          <div style={{ flex:1 }}>
+            <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>Workspace</label>
+            <div style={{ display:"flex",gap:6,flexWrap:"wrap" }}>
+              <div onClick={() => setEditingTask({ ...editingTask, wsId: null, projectId: null })} style={{
+                padding:"6px 10px",borderRadius:10,cursor:"pointer",
+                background: !editingTask.wsId ? "var(--primary-bg)" : "var(--hover-bg)",
+                border: !editingTask.wsId ? "2px solid var(--primary)" : "2px solid transparent",
+                fontFamily:"var(--body)",fontSize:11,fontWeight:600,color:!editingTask.wsId?"var(--primary)":"var(--muted)",
+                transition:"all 0.15s",
+              }}>None</div>
+              {ws.map(w => (
+                <div key={w.id} onClick={() => setEditingTask({ ...editingTask, wsId: w.id, projectId: null })} style={{
+                  padding:"6px 10px",borderRadius:10,cursor:"pointer",
+                  background: editingTask.wsId === w.id ? `${w.color}18` : "var(--hover-bg)",
+                  border: editingTask.wsId === w.id ? `2px solid ${w.color}` : "2px solid transparent",
+                  fontFamily:"var(--body)",fontSize:11,fontWeight:600,color:editingTask.wsId===w.id?w.color:"var(--muted)",
+                  transition:"all 0.15s",display:"flex",alignItems:"center",gap:4,
+                }}>{getWsIcon(w.icon, 11)} {w.name}</div>
+              ))}
+            </div>
+          </div>
+        </div>
+        {editingTask.wsId && projects.filter(p => p.wsId === editingTask.wsId).length > 0 && (
         <div style={{ marginBottom:14 }}>
-          <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>Priority</label>
-          <div style={{ display:"flex",gap:6 }}>
-            {["low","medium","high"].map(p => (
-              <div key={p} onClick={() => setEditingTask({ ...editingTask, priority: p })} style={{
-                flex:1,padding:"8px 0",textAlign:"center",borderRadius:10,cursor:"pointer",
-                background: editingTask.priority === p ? `${pColors[p]}18` : "var(--hover-bg)",
-                border: editingTask.priority === p ? `2px solid ${pColors[p]}` : "2px solid transparent",
-                fontFamily:"var(--body)",fontSize:12,fontWeight:600,color:editingTask.priority===p?pColors[p]:"var(--muted)",
-                textTransform:"capitalize",transition:"all 0.15s",
-              }}>{p}</div>
+          <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>Project</label>
+          <div style={{ display:"flex",gap:6,flexWrap:"wrap" }}>
+            <div onClick={() => setEditingTask({ ...editingTask, projectId: null })} style={{
+              padding:"6px 10px",borderRadius:10,cursor:"pointer",
+              background: !editingTask.projectId ? "var(--primary-bg)" : "var(--hover-bg)",
+              border: !editingTask.projectId ? "2px solid var(--primary)" : "2px solid transparent",
+              fontFamily:"var(--body)",fontSize:11,fontWeight:600,color:!editingTask.projectId?"var(--primary)":"var(--muted)",
+              transition:"all 0.15s",
+            }}>None</div>
+            {projects.filter(p => p.wsId === editingTask.wsId).map(p => (
+              <div key={p.id} onClick={() => setEditingTask({ ...editingTask, projectId: p.id })} style={{
+                padding:"6px 10px",borderRadius:10,cursor:"pointer",
+                background: editingTask.projectId === p.id ? `${p.color}18` : "var(--hover-bg)",
+                border: editingTask.projectId === p.id ? `2px solid ${p.color}` : "2px solid transparent",
+                fontFamily:"var(--body)",fontSize:11,fontWeight:600,color:editingTask.projectId===p.id?p.color:"var(--muted)",
+                transition:"all 0.15s",display:"flex",alignItems:"center",gap:4,
+              }}>{getWsIcon(p.icon, 11)} {p.name}</div>
             ))}
           </div>
         </div>
-        <div style={{ display:"flex",gap:14,marginBottom:20 }}>
+        )}
+        <div style={{ display:"flex",gap:14,marginBottom:14 }}>
           <div style={{ flex:1 }}>
             <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>Due Date</label>
             <input type="date" value={editingTask.dueDate || ""} onChange={e => setEditingTask({ ...editingTask, dueDate: e.target.value })} style={inputStyle} />
@@ -1447,8 +1537,55 @@ export default function App() {
             <input type="time" value={editingTask.dueTime || ""} onChange={e => setEditingTask({ ...editingTask, dueTime: e.target.value })} style={inputStyle} />
           </div>
         </div>
-        <div style={{ display:"flex",justifyContent:"flex-end",gap:10 }}>
-          <Btn onClick={() => setEditingTask(null)}>Cancel</Btn>
+        <div style={{ display:"flex",gap:14,marginBottom:14 }}>
+          <div style={{ flex:1 }}>
+            <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>Section</label>
+            <div style={{ display:"flex",gap:6 }}>
+              {["morning","afternoon","evening"].map(s => (
+                <div key={s} onClick={() => setEditingTask({ ...editingTask, section: s })} style={{
+                  flex:1,padding:"8px 0",textAlign:"center",borderRadius:10,cursor:"pointer",
+                  background: editingTask.section === s ? "var(--primary-bg)" : "var(--hover-bg)",
+                  border: editingTask.section === s ? "2px solid var(--primary)" : "2px solid transparent",
+                  fontFamily:"var(--body)",fontSize:11,fontWeight:600,color:editingTask.section===s?"var(--primary)":"var(--muted)",
+                  textTransform:"capitalize",transition:"all 0.15s",
+                }}>{s === "morning" ? "AM" : s === "afternoon" ? "PM" : "EVE"}</div>
+              ))}
+            </div>
+          </div>
+          <div style={{ flex:1 }}>
+            <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>Pomodoros</label>
+            <div style={{ display:"flex",alignItems:"center",gap:8 }}>
+              <div onClick={() => setEditingTask({ ...editingTask, totalPomos: Math.max(1, (editingTask.totalPomos || 1) - 1) })} style={{ width:32,height:32,borderRadius:8,background:"var(--hover-bg)",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontFamily:"var(--body)",fontSize:16,fontWeight:700,color:"var(--muted)",userSelect:"none" }}>−</div>
+              <span style={{ fontFamily:"var(--mono)",fontSize:14,fontWeight:700,color:"var(--text)",minWidth:20,textAlign:"center" }}>{editingTask.totalPomos || 0}</span>
+              <div onClick={() => setEditingTask({ ...editingTask, totalPomos: Math.min(12, (editingTask.totalPomos || 0) + 1) })} style={{ width:32,height:32,borderRadius:8,background:"var(--hover-bg)",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontFamily:"var(--body)",fontSize:16,fontWeight:700,color:"var(--muted)",userSelect:"none" }}>+</div>
+            </div>
+          </div>
+        </div>
+        <div style={{ marginBottom:14 }}>
+          <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>Steps</label>
+          <div style={{ display:"flex",gap:8,marginBottom:8 }}>
+            <input value={editSubtaskText} onChange={e => setEditSubtaskText(e.target.value)} placeholder="Add a step..." style={{ ...inputStyle, flex:1 }}
+              onKeyDown={e => { if (e.key === "Enter" && editSubtaskText.trim()) { setEditingTask({ ...editingTask, subtasks: [...(editingTask.subtasks || []), { id: crypto.randomUUID(), text: editSubtaskText.trim(), done: false, xp: 10 }] }); setEditSubtaskText(""); }}} />
+            <Btn small onClick={() => { if (editSubtaskText.trim()) { setEditingTask({ ...editingTask, subtasks: [...(editingTask.subtasks || []), { id: crypto.randomUUID(), text: editSubtaskText.trim(), done: false, xp: 10 }] }); setEditSubtaskText(""); }}}>Add</Btn>
+          </div>
+          {(editingTask.subtasks || []).map((st, i) => (
+            <div key={st.id} style={{ display:"flex",alignItems:"center",gap:10,padding:"8px 12px",background:"var(--input-bg)",borderRadius:8,marginBottom:4,border:"1px solid var(--border-light)" }}>
+              <span style={{ fontFamily:"var(--mono)",fontSize:11,color:"var(--muted)",fontWeight:600 }}>{i+1}.</span>
+              <span style={{ flex:1,fontFamily:"var(--body)",fontSize:13,color:"var(--text)",textDecoration:st.done?"line-through":"none",opacity:st.done?0.5:1 }}>{st.text}</span>
+              <span style={{ fontFamily:"var(--mono)",fontSize:10,color:"var(--muted)" }}>+{st.xp} XP</span>
+              <div onClick={() => setEditingTask({ ...editingTask, subtasks: editingTask.subtasks.filter(s => s.id !== st.id) })} style={{ cursor:"pointer",color:"var(--muted)",display:"flex",alignItems:"center" }}
+                onMouseEnter={e => e.currentTarget.style.color="#EF4444"} onMouseLeave={e => e.currentTarget.style.color="var(--muted)"}
+              ><X size={14} /></div>
+            </div>
+          ))}
+        </div>
+        <div style={{ marginBottom:20 }}>
+          <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>Reward (after completing)</label>
+          <input value={editingTask.reward || ""} onChange={e => setEditingTask({ ...editingTask, reward: e.target.value })} placeholder="e.g. Coffee break, 15 min gaming..." style={inputStyle} />
+        </div>
+        </div>
+        <div style={{ display:"flex",justifyContent:"flex-end",gap:10,paddingTop:10,borderTop:"1px solid var(--border-light)" }}>
+          <Btn onClick={() => { setEditingTask(null); setEditSubtaskText(""); }}>Cancel</Btn>
           <Btn primary onClick={saveEditTask}>Save Changes</Btn>
         </div>
         </>)}
@@ -1531,6 +1668,54 @@ export default function App() {
         </div>
       </Modal>
 
+      <Modal open={showNewProject} onClose={() => setShowNewProject(false)} title="New Project">
+        <div style={{ marginBottom:16 }}>
+          <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>Name</label>
+          <input value={newProjectName} onChange={e => setNewProjectName(e.target.value)} placeholder="e.g. Website Redesign, Q2 Marketing..." style={inputStyle} autoFocus />
+        </div>
+        <div style={{ marginBottom:16 }}>
+          <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:8 }}>Color</label>
+          <div style={{ display:"flex",gap:8,flexWrap:"wrap" }}>
+            {WS_COLOR_OPTIONS.map(c => (
+              <div key={c} onClick={() => setNewProjectColor(c)} style={{
+                width:28,height:28,borderRadius:8,background:c,cursor:"pointer",
+                border: newProjectColor === c ? "2.5px solid var(--text)" : "2.5px solid transparent",
+                display:"flex",alignItems:"center",justifyContent:"center",
+                transition:"all 0.15s",transform: newProjectColor === c ? "scale(1.15)" : "scale(1)",
+              }}>{newProjectColor === c && <Check size={14} color="#fff" />}</div>
+            ))}
+          </div>
+        </div>
+        <div style={{ marginBottom:20 }}>
+          <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:8 }}>Icon</label>
+          <div style={{ display:"flex",gap:6,flexWrap:"wrap" }}>
+            {WS_ICON_OPTIONS.map(opt => {
+              const IconComp = opt.component;
+              return (
+                <div key={opt.key} onClick={() => setNewProjectIcon(opt.key)} style={{
+                  width:36,height:36,borderRadius:8,cursor:"pointer",
+                  background: newProjectIcon === opt.key ? `${newProjectColor}18` : "var(--hover-bg)",
+                  border: newProjectIcon === opt.key ? `2px solid ${newProjectColor}` : "2px solid transparent",
+                  display:"flex",alignItems:"center",justifyContent:"center",
+                  color: newProjectIcon === opt.key ? newProjectColor : "var(--muted)",
+                  transition:"all 0.15s",
+                }}><IconComp size={18} /></div>
+              );
+            })}
+          </div>
+        </div>
+        <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center" }}>
+          <div style={{ display:"flex",alignItems:"center",gap:10 }}>
+            <div style={{ width:36,height:36,borderRadius:10,background:`${newProjectColor}18`,display:"flex",alignItems:"center",justifyContent:"center",color:newProjectColor }}>{getWsIcon(newProjectIcon, 18)}</div>
+            <span style={{ fontFamily:"var(--body)",fontSize:13,fontWeight:600,color:"var(--text)" }}>{newProjectName || "Preview"}</span>
+          </div>
+          <div style={{ display:"flex",gap:10 }}>
+            <Btn onClick={() => setShowNewProject(false)}>Cancel</Btn>
+            <Btn primary onClick={createProject}>Create Project</Btn>
+          </div>
+        </div>
+      </Modal>
+
       <Modal open={showWsNote} onClose={() => setShowWsNote(false)} title="New Note">
         <div style={{ marginBottom:14 }}>
           <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>Title (optional)</label>
@@ -1574,71 +1759,17 @@ export default function App() {
 
       {/* ─── NEW FEATURE MODALS ─── */}
 
-      <Modal open={showNewContact} onClose={() => setShowNewContact(false)} title="Add Contact">
-        <div style={{ marginBottom:14 }}>
-          <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>Name</label>
-          <input value={newContactName} onChange={e => setNewContactName(e.target.value)} placeholder="Full name" style={inputStyle} autoFocus />
-        </div>
-        <div style={{ marginBottom:14 }}>
-          <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>Email</label>
-          <input value={newContactEmail} onChange={e => setNewContactEmail(e.target.value)} placeholder="email@example.com" style={inputStyle} />
-        </div>
-        <div style={{ marginBottom:20 }}>
-          <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>Context</label>
-          <div style={{ display:"flex",gap:6 }}>
-            {["Academic","Client","Student","Community","Personal"].map(ctx => (
-              <div key={ctx} onClick={() => setNewContactContext(ctx)} style={{
-                flex:1,padding:"8px 0",textAlign:"center",borderRadius:10,cursor:"pointer",
-                background: newContactContext === ctx ? "var(--primary-bg)" : "var(--hover-bg)",
-                border: newContactContext === ctx ? "2px solid #5B8DEF" : "2px solid transparent",
-                fontFamily:"var(--body)",fontSize:11,fontWeight:600,color:newContactContext===ctx?"#5B8DEF":"var(--muted)",
-                transition:"all 0.15s",
-              }}>{ctx}</div>
-            ))}
-          </div>
-        </div>
-        <div style={{ display:"flex",justifyContent:"flex-end",gap:10 }}>
-          <Btn onClick={() => setShowNewContact(false)}>Cancel</Btn>
-          <Btn primary onClick={createContact}>Add Contact</Btn>
-        </div>
-      </Modal>
-
-      <Modal open={showNewInteraction} onClose={() => setShowNewInteraction(false)} title="Log Interaction">
-        <div style={{ marginBottom:14 }}>
-          <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>Type</label>
-          <div style={{ display:"flex",gap:6 }}>
-            {["message","email","meeting","call"].map(t => (
-              <div key={t} onClick={() => setNewInteractionType(t)} style={{
-                flex:1,padding:"8px 0",textAlign:"center",borderRadius:10,cursor:"pointer",
-                background: newInteractionType === t ? "var(--primary-bg)" : "var(--hover-bg)",
-                border: newInteractionType === t ? "2px solid #5B8DEF" : "2px solid transparent",
-                fontFamily:"var(--body)",fontSize:11,fontWeight:600,color:newInteractionType===t?"#5B8DEF":"var(--muted)",
-                textTransform:"capitalize",transition:"all 0.15s",
-              }}>{t}</div>
-            ))}
-          </div>
-        </div>
-        <div style={{ marginBottom:14 }}>
-          <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>Details</label>
-          <textarea value={newInteractionText} onChange={e => setNewInteractionText(e.target.value)} placeholder="What happened?" style={{ ...inputStyle, minHeight:80, resize:"vertical" }} autoFocus />
-        </div>
-        <div style={{ display:"flex",justifyContent:"flex-end",gap:10 }}>
-          <Btn onClick={() => setShowNewInteraction(false)}>Cancel</Btn>
-          <Btn primary onClick={addInteraction}>Log Interaction</Btn>
-        </div>
-      </Modal>
-
       <Modal open={showNewHabit} onClose={() => setShowNewHabit(false)} title="New Habit">
         <div style={{ marginBottom:14 }}>
           <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>Name</label>
           <input value={newHabitName} onChange={e => setNewHabitName(e.target.value)} placeholder="e.g. Meditate, Walk 10k steps..." style={inputStyle} autoFocus />
         </div>
         <div style={{ marginBottom:14 }}>
-          <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>Frequency</label>
-          <div style={{ display:"flex",gap:6 }}>
-            {["daily","weekly"].map(f => (
-              <div key={f} onClick={() => setNewHabitFreq(f)} style={{
-                flex:1,padding:"8px 0",textAlign:"center",borderRadius:10,cursor:"pointer",
+          <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>Schedule</label>
+          <div style={{ display:"flex",gap:6,flexWrap:"wrap" }}>
+            {["daily","weekdays","weekends","custom"].map(f => (
+              <div key={f} onClick={() => { setNewHabitFreq(f); if (f !== "custom") setNewHabitDays(daysForFrequency(f)); }} style={{
+                flex:"1 0 auto",padding:"8px 12px",textAlign:"center",borderRadius:10,cursor:"pointer",
                 background: newHabitFreq === f ? "rgba(34,197,94,0.1)" : "var(--hover-bg)",
                 border: newHabitFreq === f ? "2px solid #22C55E" : "2px solid transparent",
                 fontFamily:"var(--body)",fontSize:12,fontWeight:600,color:newHabitFreq===f?"#22C55E":"var(--muted)",
@@ -1647,6 +1778,25 @@ export default function App() {
             ))}
           </div>
         </div>
+        {newHabitFreq === "custom" && (
+          <div style={{ marginBottom:14 }}>
+            <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>Pick days</label>
+            <div style={{ display:"flex",gap:6 }}>
+              {["Su","Mo","Tu","We","Th","Fr","Sa"].map((d, i) => {
+                const active = newHabitDays.includes(i);
+                return (
+                  <div key={d} onClick={() => setNewHabitDays(prev => active ? prev.filter(x => x !== i) : [...prev, i].sort((a,b)=>a-b))} style={{
+                    flex:1,padding:"8px 0",textAlign:"center",borderRadius:8,cursor:"pointer",
+                    background: active ? "rgba(34,197,94,0.15)" : "var(--hover-bg)",
+                    border: active ? "2px solid #22C55E" : "2px solid transparent",
+                    fontFamily:"var(--mono)",fontSize:11,fontWeight:600,color: active ? "#22C55E" : "var(--muted)",
+                    transition:"all 0.15s",
+                  }}>{d}</div>
+                );
+              })}
+            </div>
+          </div>
+        )}
         <div style={{ marginBottom:20 }}>
           <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:8 }}>Color</label>
           <div style={{ display:"flex",gap:8 }}>
@@ -1662,17 +1812,6 @@ export default function App() {
         <div style={{ display:"flex",justifyContent:"flex-end",gap:10 }}>
           <Btn onClick={() => setShowNewHabit(false)}>Cancel</Btn>
           <Btn primary onClick={createHabit}>Create Habit</Btn>
-        </div>
-      </Modal>
-
-      <Modal open={showNewGoal} onClose={() => setShowNewGoal(false)} title="New Goal">
-        <div style={{ marginBottom:14 }}>
-          <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>Objective</label>
-          <input value={newGoalTitle} onChange={e => setNewGoalTitle(e.target.value)} placeholder="What do you want to achieve?" style={inputStyle} autoFocus />
-        </div>
-        <div style={{ display:"flex",justifyContent:"flex-end",gap:10 }}>
-          <Btn onClick={() => setShowNewGoal(false)}>Cancel</Btn>
-          <Btn primary onClick={createGoal}>Create Goal</Btn>
         </div>
       </Modal>
 
@@ -1694,64 +1833,6 @@ export default function App() {
         <div style={{ display:"flex",justifyContent:"flex-end",gap:10 }}>
           <Btn onClick={() => setShowNewBlock(false)}>Cancel</Btn>
           <Btn primary onClick={createTimeBlock}>Add Block</Btn>
-        </div>
-      </Modal>
-
-      <Modal open={showNewBookmark} onClose={() => setShowNewBookmark(false)} title="Save Bookmark">
-        <div style={{ marginBottom:14 }}>
-          <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>Title</label>
-          <input value={newBmTitle} onChange={e => setNewBmTitle(e.target.value)} placeholder="Article or resource name" style={inputStyle} autoFocus />
-        </div>
-        <div style={{ marginBottom:14 }}>
-          <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>URL</label>
-          <input value={newBmUrl} onChange={e => setNewBmUrl(e.target.value)} placeholder="https://..." style={inputStyle} />
-        </div>
-        <div style={{ marginBottom:14 }}>
-          <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>Description (optional)</label>
-          <textarea value={newBmDesc} onChange={e => setNewBmDesc(e.target.value)} placeholder="Why is this useful?" style={{ ...inputStyle, minHeight:60, resize:"vertical" }} />
-        </div>
-        <div style={{ marginBottom:20 }}>
-          <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>Workspace (optional)</label>
-          <div style={{ display:"flex",gap:6,flexWrap:"wrap" }}>
-            <div onClick={() => setNewBmWs("")} style={{
-              padding:"6px 12px",borderRadius:10,cursor:"pointer",
-              background: !newBmWs ? "var(--primary-bg)" : "var(--hover-bg)",
-              border: !newBmWs ? "2px solid #5B8DEF" : "2px solid transparent",
-              fontFamily:"var(--body)",fontSize:11,fontWeight:600,color:!newBmWs?"#5B8DEF":"var(--muted)",
-            }}>None</div>
-            {ws.map(w => (
-              <div key={w.id} onClick={() => setNewBmWs(w.id)} style={{
-                padding:"6px 12px",borderRadius:10,cursor:"pointer",
-                background: newBmWs === w.id ? `${w.color}18` : "var(--hover-bg)",
-                border: newBmWs === w.id ? `2px solid ${w.color}` : "2px solid transparent",
-                fontFamily:"var(--body)",fontSize:11,fontWeight:600,color:newBmWs===w.id?w.color:"var(--muted)",
-                display:"flex",alignItems:"center",gap:4,
-              }}>{getWsIcon(w.icon, 11)} {w.name}</div>
-            ))}
-          </div>
-        </div>
-        <div style={{ display:"flex",justifyContent:"flex-end",gap:10 }}>
-          <Btn onClick={() => setShowNewBookmark(false)}>Cancel</Btn>
-          <Btn primary onClick={createBookmark}>Save Bookmark</Btn>
-        </div>
-      </Modal>
-
-      <Modal open={showNewTemplate} onClose={() => setShowNewTemplate(false)} title="New Template">
-        <div style={{ marginBottom:14 }}>
-          <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>Name</label>
-          <input value={newTemplateName} onChange={e => setNewTemplateName(e.target.value)} placeholder="Template name" style={inputStyle} autoFocus />
-        </div>
-        <div style={{ marginBottom:14 }}>
-          <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>Category</label>
-          <input value={newTemplateCategory} onChange={e => setNewTemplateCategory(e.target.value)} placeholder="e.g. Teaching, Productivity..." style={inputStyle} />
-        </div>
-        <div style={{ marginBottom:14 }}>
-          <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>Items (one per line)</label>
-          <textarea value={newTemplateItems} onChange={e => setNewTemplateItems(e.target.value)} placeholder="Step 1&#10;Step 2&#10;Step 3" style={{ ...inputStyle, minHeight:120, resize:"vertical" }} />
-        </div>
-        <div style={{ display:"flex",justifyContent:"flex-end",gap:10 }}>
-          <Btn onClick={() => setShowNewTemplate(false)}>Cancel</Btn>
-          <Btn primary onClick={createTemplate}>Create Template</Btn>
         </div>
       </Modal>
 
@@ -1818,7 +1899,7 @@ export default function App() {
         </div>
         <div style={{ marginBottom:20 }}>
           <label onClick={() => setNewTxRecurring(!newTxRecurring)} style={{ display:"flex",alignItems:"center",gap:8,cursor:"pointer",fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600 }}>
-            <div style={{ width:18,height:18,borderRadius:5,border:newTxRecurring?"none":"2px solid rgba(0,0,0,0.15)",background:newTxRecurring?"#5B8DEF":"transparent",display:"flex",alignItems:"center",justifyContent:"center",transition:"all 0.15s" }}>
+            <div style={{ width:18,height:18,borderRadius:5,border:newTxRecurring?"none":"2px solid var(--checkbox-border)",background:newTxRecurring?"#5B8DEF":"transparent",display:"flex",alignItems:"center",justifyContent:"center",transition:"all 0.15s" }}>
               {newTxRecurring && <Check size={12} color="#fff"/>}
             </div>
             Recurring (monthly)
@@ -1860,17 +1941,18 @@ export default function App() {
       <Modal open={!!editingHabit} onClose={() => setEditingHabit(null)} title="Edit Habit">
         {editingHabit && (() => {
           const set = (k, v) => setEditingHabit(h => ({ ...h, [k]: v }));
+          const editDays = editingHabit.scheduleDays || daysForFrequency(editingHabit.frequency);
           return <>
             <div style={{ marginBottom:14 }}>
               <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>Name</label>
               <input value={editingHabit.name} onChange={e => set("name", e.target.value)} style={inputStyle} autoFocus />
             </div>
             <div style={{ marginBottom:14 }}>
-              <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>Frequency</label>
-              <div style={{ display:"flex",gap:6 }}>
-                {["daily","weekly"].map(f => (
-                  <div key={f} onClick={() => set("frequency", f)} style={{
-                    flex:1,padding:"8px 0",textAlign:"center",borderRadius:10,cursor:"pointer",
+              <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>Schedule</label>
+              <div style={{ display:"flex",gap:6,flexWrap:"wrap" }}>
+                {["daily","weekdays","weekends","custom"].map(f => (
+                  <div key={f} onClick={() => { set("frequency", f); if (f !== "custom") set("scheduleDays", daysForFrequency(f)); }} style={{
+                    flex:"1 0 auto",padding:"8px 12px",textAlign:"center",borderRadius:10,cursor:"pointer",
                     background: editingHabit.frequency === f ? "rgba(34,197,94,0.1)" : "var(--hover-bg)",
                     border: editingHabit.frequency === f ? "2px solid #22C55E" : "2px solid transparent",
                     fontFamily:"var(--body)",fontSize:12,fontWeight:600,color:editingHabit.frequency===f?"#22C55E":"var(--muted)",
@@ -1879,6 +1961,25 @@ export default function App() {
                 ))}
               </div>
             </div>
+            {editingHabit.frequency === "custom" && (
+              <div style={{ marginBottom:14 }}>
+                <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>Pick days</label>
+                <div style={{ display:"flex",gap:6 }}>
+                  {["Su","Mo","Tu","We","Th","Fr","Sa"].map((d, i) => {
+                    const active = editDays.includes(i);
+                    return (
+                      <div key={d} onClick={() => set("scheduleDays", active ? editDays.filter(x => x !== i) : [...editDays, i].sort((a,b)=>a-b))} style={{
+                        flex:1,padding:"8px 0",textAlign:"center",borderRadius:8,cursor:"pointer",
+                        background: active ? "rgba(34,197,94,0.15)" : "var(--hover-bg)",
+                        border: active ? "2px solid #22C55E" : "2px solid transparent",
+                        fontFamily:"var(--mono)",fontSize:11,fontWeight:600,color: active ? "#22C55E" : "var(--muted)",
+                        transition:"all 0.15s",
+                      }}>{d}</div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
             <div style={{ marginBottom:20 }}>
               <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:8 }}>Color</label>
               <div style={{ display:"flex",gap:8 }}>
@@ -1893,112 +1994,7 @@ export default function App() {
             </div>
             <div style={{ display:"flex",justifyContent:"flex-end",gap:10 }}>
               <Btn onClick={() => setEditingHabit(null)}>Cancel</Btn>
-              <Btn primary onClick={() => updateHabit(editingHabit.id, { name: editingHabit.name, frequency: editingHabit.frequency, color: editingHabit.color })}>Save</Btn>
-            </div>
-          </>;
-        })()}
-      </Modal>
-
-      <Modal open={!!editingBookmark} onClose={() => setEditingBookmark(null)} title="Edit Bookmark">
-        {editingBookmark && (() => {
-          const set = (k, v) => setEditingBookmark(b => ({ ...b, [k]: v }));
-          return <>
-            <div style={{ marginBottom:14 }}>
-              <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>Title</label>
-              <input value={editingBookmark.title} onChange={e => set("title", e.target.value)} style={inputStyle} autoFocus />
-            </div>
-            <div style={{ marginBottom:14 }}>
-              <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>URL</label>
-              <input value={editingBookmark.url} onChange={e => set("url", e.target.value)} style={inputStyle} />
-            </div>
-            <div style={{ marginBottom:14 }}>
-              <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>Description</label>
-              <textarea value={editingBookmark.description} onChange={e => set("description", e.target.value)} style={{ ...inputStyle, minHeight:60, resize:"vertical" }} />
-            </div>
-            <div style={{ display:"flex",justifyContent:"flex-end",gap:10 }}>
-              <Btn onClick={() => setEditingBookmark(null)}>Cancel</Btn>
-              <Btn primary onClick={() => updateBookmark(editingBookmark.id, { title: editingBookmark.title, url: editingBookmark.url, description: editingBookmark.description, wsId: editingBookmark.wsId })}>Save</Btn>
-            </div>
-          </>;
-        })()}
-      </Modal>
-
-      <Modal open={!!editingGoal} onClose={() => setEditingGoal(null)} title="Edit Goal">
-        {editingGoal && (() => {
-          const set = (k, v) => setEditingGoal(g => ({ ...g, [k]: v }));
-          return <>
-            <div style={{ marginBottom:14 }}>
-              <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>Objective</label>
-              <input value={editingGoal.title} onChange={e => set("title", e.target.value)} style={inputStyle} autoFocus />
-            </div>
-            <div style={{ marginBottom:14 }}>
-              <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>Quarter</label>
-              <input value={editingGoal.quarter} onChange={e => set("quarter", e.target.value)} style={inputStyle} />
-            </div>
-            <div style={{ marginBottom:14 }}>
-              <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>Status</label>
-              <div style={{ display:"flex",gap:6 }}>
-                {["in-progress","on-track","at-risk","completed"].map(s => {
-                  const colors = { "in-progress":"#5B8DEF","on-track":"#22C55E","at-risk":"#EF4444","completed":"#A78BFA" };
-                  return <div key={s} onClick={() => set("status", s)} style={{
-                    flex:1,padding:"8px 0",textAlign:"center",borderRadius:10,cursor:"pointer",
-                    background: editingGoal.status === s ? `${colors[s]}14` : "var(--hover-bg)",
-                    border: editingGoal.status === s ? `2px solid ${colors[s]}` : "2px solid transparent",
-                    fontFamily:"var(--body)",fontSize:10,fontWeight:600,color:editingGoal.status===s?colors[s]:"var(--muted)",
-                    transition:"all 0.15s",
-                  }}>{s}</div>;
-                })}
-              </div>
-            </div>
-            <div style={{ marginBottom:20 }}>
-              <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>Progress (%)</label>
-              <input type="number" min="0" max="100" value={editingGoal.progress} onChange={e => set("progress", parseInt(e.target.value) || 0)} style={inputStyle} />
-            </div>
-            <div style={{ display:"flex",justifyContent:"flex-end",gap:10 }}>
-              <Btn onClick={() => setEditingGoal(null)}>Cancel</Btn>
-              <Btn primary onClick={() => updateGoal(editingGoal.id, { title: editingGoal.title, quarter: editingGoal.quarter, status: editingGoal.status, progress: editingGoal.progress })}>Save</Btn>
-            </div>
-          </>;
-        })()}
-      </Modal>
-
-      <Modal open={!!editingContact} onClose={() => setEditingContact(null)} title="Edit Contact">
-        {editingContact && (() => {
-          const set = (k, v) => setEditingContact(c => ({ ...c, [k]: v }));
-          return <>
-            <div style={{ marginBottom:14 }}>
-              <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>Name</label>
-              <input value={editingContact.name} onChange={e => set("name", e.target.value)} style={inputStyle} autoFocus />
-            </div>
-            <div style={{ marginBottom:14 }}>
-              <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>Email</label>
-              <input value={editingContact.email || ""} onChange={e => set("email", e.target.value)} style={inputStyle} />
-            </div>
-            <div style={{ marginBottom:14 }}>
-              <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>Phone</label>
-              <input value={editingContact.phone || ""} onChange={e => set("phone", e.target.value)} style={inputStyle} />
-            </div>
-            <div style={{ marginBottom:14 }}>
-              <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>Context</label>
-              <div style={{ display:"flex",gap:6 }}>
-                {["Academic","Client","Student","Community","Personal"].map(ctx => (
-                  <div key={ctx} onClick={() => set("context", ctx)} style={{
-                    flex:1,padding:"8px 0",textAlign:"center",borderRadius:10,cursor:"pointer",
-                    background: editingContact.context === ctx ? "var(--primary-bg)" : "var(--hover-bg)",
-                    border: editingContact.context === ctx ? "2px solid #5B8DEF" : "2px solid transparent",
-                    fontFamily:"var(--body)",fontSize:11,fontWeight:600,color:editingContact.context===ctx?"#5B8DEF":"var(--muted)",
-                    transition:"all 0.15s",
-                  }}>{ctx}</div>
-                ))}
-              </div>
-            </div>
-            <div style={{ marginBottom:20 }}>
-              <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>Notes</label>
-              <textarea value={editingContact.notes || ""} onChange={e => set("notes", e.target.value)} placeholder="Notes about this contact..." style={{ ...inputStyle, minHeight:60, resize:"vertical" }} />
-            </div>
-            <div style={{ display:"flex",justifyContent:"flex-end",gap:10 }}>
-              <Btn onClick={() => setEditingContact(null)}>Cancel</Btn>
-              <Btn primary onClick={() => updateContact(editingContact.id, { name: editingContact.name, email: editingContact.email, phone: editingContact.phone, context: editingContact.context, notes: editingContact.notes })}>Save</Btn>
+              <Btn primary onClick={() => updateHabit(editingHabit.id, { name: editingHabit.name, frequency: editingHabit.frequency, scheduleDays: editingHabit.scheduleDays || daysForFrequency(editingHabit.frequency), color: editingHabit.color })}>Save</Btn>
             </div>
           </>;
         })()}

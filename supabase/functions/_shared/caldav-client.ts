@@ -24,8 +24,6 @@ async function caldavRequest(
   let res: Response;
   let attempts = 0;
 
-  console.log(`[CalDAV] ${method} ${url}`);
-
   while (attempts < 5) {
     attempts++;
     res = await fetch(currentUrl, {
@@ -35,20 +33,18 @@ async function caldavRequest(
       redirect: "manual",
     });
 
-    console.log(`[CalDAV] attempt ${attempts}: ${currentUrl} → ${res.status}`);
-
     if (res.status >= 300 && res.status < 400) {
       const location = res.headers.get("Location");
-      console.log(`[CalDAV] redirect to: ${location}`);
       if (!location) break;
-      currentUrl = location.startsWith("http") ? location : new URL(location, currentUrl).toString();
+      const redirectUrl = location.startsWith("http") ? location : new URL(location, currentUrl).toString();
+      if (!isAllowedRedirect(redirectUrl)) throw new Error("Redirect to disallowed domain");
+      currentUrl = redirectUrl;
       continue;
     }
     break;
   }
 
   const text = await res!.text();
-  console.log(`[CalDAV] final status: ${res!.status}, body length: ${text.length}, body preview: ${text.slice(0, 300)}`);
   return { status: res!.status, text, headers: res!.headers, finalUrl: currentUrl };
 }
 
@@ -68,10 +64,8 @@ export async function discoverPrincipal(
   const res = await caldavRequest(CALDAV_BASE + "/", "PROPFIND", body, appleId, password, "0");
   if (res.status >= 400) throw new Error(`CalDAV auth failed (${res.status})`);
 
-  console.log("[CalDAV] discoverPrincipal response:", res.text.slice(0, 1000));
-
   const match = res.text.match(/current-user-principal[\s\S]*?<[^>]*href[^>]*>([^<]+)</i);
-  if (!match) throw new Error("Could not discover principal URL. Response: " + res.text.slice(0, 500));
+  if (!match) throw new Error("Could not discover principal URL");
 
   const principalHref = match[1].trim();
   // If Apple returned a full URL, use it directly; otherwise prepend the redirect base
@@ -130,8 +124,6 @@ export async function listCalendars(
   const res = await caldavRequest(homeSetUrl, "PROPFIND", body, appleId, password, "1");
   if (res.status >= 400) throw new Error(`Calendar list failed (${res.status})`);
 
-  console.log("[CalDAV] listCalendars raw XML (first 2000):", res.text.slice(0, 2000));
-
   const calendars: CalendarInfo[] = [];
   // Split on <response> with any namespace prefix (or none)
   const responses = res.text.split(/<(?:[a-zA-Z]+:)?response(?:\s[^>]*)?>/i).slice(1);
@@ -155,8 +147,6 @@ export async function listCalendars(
     const supportsVEVENT = /VEVENT/i.test(resp);
     const supportsVTODO = /VTODO/i.test(resp);
     const hasComponentSet = /supported-calendar-component-set/i.test(resp);
-
-    console.log(`[CalDAV] found: ${name}, VEVENT=${supportsVEVENT}, VTODO=${supportsVTODO}, hasComponentSet=${hasComponentSet}, href=${href}`);
 
     const base = new URL(homeSetUrl).origin;
     const fullHref = href.startsWith("http") ? href : base + href;
@@ -290,7 +280,9 @@ export async function putEvent(
     if (res.status >= 300 && res.status < 400) {
       const location = res.headers.get("Location");
       if (!location) break;
-      currentUrl = location.startsWith("http") ? location : new URL(location, currentUrl).toString();
+      const redirectUrl = location.startsWith("http") ? location : new URL(location, currentUrl).toString();
+      if (!isAllowedRedirect(redirectUrl)) throw new Error("Redirect to disallowed domain");
+      currentUrl = redirectUrl;
       continue;
     }
     break;
@@ -328,7 +320,9 @@ export async function deleteResource(
     if (res.status >= 300 && res.status < 400) {
       const location = res.headers.get("Location");
       if (!location) break;
-      currentUrl = location.startsWith("http") ? location : new URL(location, currentUrl).toString();
+      const redirectUrl = location.startsWith("http") ? location : new URL(location, currentUrl).toString();
+      if (!isAllowedRedirect(redirectUrl)) throw new Error("Redirect to disallowed domain");
+      currentUrl = redirectUrl;
       continue;
     }
     break;
@@ -404,6 +398,23 @@ function extractProp(block: string, prop: string): string | undefined {
   return val;
 }
 
+// ─── ICAL HELPERS ───────────────────────────
+
+/** Strip CRLF sequences to prevent iCal property injection */
+function icalSafe(str: string): string {
+  return str.replace(/[\r\n]+/g, " ");
+}
+
+/** Validate that a redirect target is on an Apple CalDAV domain */
+function isAllowedRedirect(url: string): boolean {
+  try {
+    const host = new URL(url).hostname;
+    return host.endsWith(".icloud.com") || host.endsWith(".apple.com");
+  } catch {
+    return false;
+  }
+}
+
 // ─── ICAL BUILDING ──────────────────────────
 
 export function buildVEvent(data: {
@@ -421,9 +432,9 @@ export function buildVEvent(data: {
     `UID:${data.uid}`,
     `DTSTART:${data.dtstart}`,
     `DTEND:${data.dtend}`,
-    `SUMMARY:${data.summary}`,
+    `SUMMARY:${icalSafe(data.summary)}`,
   ];
-  if (data.description) lines.push(`DESCRIPTION:${data.description}`);
+  if (data.description) lines.push(`DESCRIPTION:${icalSafe(data.description)}`);
   lines.push("END:VEVENT", "END:VCALENDAR");
   return lines.join("\r\n");
 }
@@ -442,12 +453,12 @@ export function buildVTodo(data: {
     "PRODID:-//OSVitae//EN",
     "BEGIN:VTODO",
     `UID:${data.uid}`,
-    `SUMMARY:${data.summary}`,
+    `SUMMARY:${icalSafe(data.summary)}`,
     `STATUS:${data.completed ? "COMPLETED" : "NEEDS-ACTION"}`,
   ];
   if (data.due) lines.push(`DUE:${data.due}`);
   if (data.priority !== undefined) lines.push(`PRIORITY:${data.priority}`);
-  if (data.description) lines.push(`DESCRIPTION:${data.description}`);
+  if (data.description) lines.push(`DESCRIPTION:${icalSafe(data.description)}`);
   if (data.completed) lines.push(`COMPLETED:${new Date().toISOString().replace(/[-:]/g, "").split(".")[0]}Z`);
   lines.push("END:VTODO", "END:VCALENDAR");
   return lines.join("\r\n");

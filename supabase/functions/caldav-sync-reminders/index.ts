@@ -1,7 +1,8 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { corsHeaders, handleCors } from "../_shared/cors.ts";
 import { getSupabaseForUser } from "../_shared/auth.ts";
 import { decrypt } from "../_shared/crypto.ts";
+import { errorResponse } from "../_shared/errors.ts";
 import {
   fetchTodos,
   parseVTodo,
@@ -21,7 +22,7 @@ serve(async (req: Request) => {
 
     const { data: creds } = await supabase
       .from("apple_credentials")
-      .select("*")
+      .select("apple_id, app_password_encrypted, calendar_home_set, selected_reminders_id, last_sync_at")
       .eq("user_id", userId)
       .single();
 
@@ -32,12 +33,24 @@ serve(async (req: Request) => {
       );
     }
 
+    // Rate limit: minimum 30 seconds between syncs
+    if (creds.last_sync_at) {
+      const elapsed = Date.now() - new Date(creds.last_sync_at).getTime();
+      if (elapsed < 30_000) {
+        return new Response(
+          JSON.stringify({ error: "Please wait before syncing again" }),
+          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+
     const password = await decrypt(creds.app_password_encrypted);
+    const appleId = await decrypt(appleId);
 
     // If "all", fetch from every reminder list; otherwise just the selected one
     let reminderListUrls: string[];
     if (creds.selected_reminders_id === "all") {
-      const allCals = await listCalendars(creds.calendar_home_set, creds.apple_id, password);
+      const allCals = await listCalendars(creds.calendar_home_set, appleId, password);
       reminderListUrls = allCals.filter(c => c.type === "reminders").map(c => c.href);
     } else {
       reminderListUrls = [creds.selected_reminders_id];
@@ -47,10 +60,10 @@ serve(async (req: Request) => {
     const remoteTodos: Awaited<ReturnType<typeof fetchTodos>> = [];
     for (const url of reminderListUrls) {
       try {
-        const todos = await fetchTodos(url, creds.apple_id, password);
+        const todos = await fetchTodos(url, appleId, password);
         remoteTodos.push(...todos);
       } catch (e) {
-        console.log(`[CalDAV] skipping list ${url}: ${e}`);
+        console.warn("[CalDAV] skipping a reminder list due to fetch error");
       }
     }
 
@@ -170,7 +183,7 @@ serve(async (req: Request) => {
       const href = pushUrl.replace(/\/$/, "") + "/" + uid + ".ics";
 
       try {
-        const result = await putEvent(href, ical, creds.apple_id, password);
+        const result = await putEvent(href, ical, appleId, password);
         await supabase
           .from("tasks")
           .update({
@@ -204,10 +217,6 @@ serve(async (req: Request) => {
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (e) {
-    console.error("caldav-sync-reminders error:", e);
-    return new Response(
-      JSON.stringify({ error: "Reminders sync failed: " + String(e) }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return errorResponse("Reminders sync", e);
   }
 });

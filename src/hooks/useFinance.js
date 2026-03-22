@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { supabase } from "../lib/supabase";
 import { getUserId } from "../lib/getUserId";
+import { logger } from "../lib/logger";
+import { validateAmount, validateName, sanitizeText } from "../lib/validate";
 import { INIT_TRANSACTIONS, INIT_BUDGETS } from "../lib/constants";
 
 export function useFinance(flash) {
@@ -29,8 +31,10 @@ export function useFinance(flash) {
 
   const addTransaction = async () => {
     if (!newTxAmount || !newTxDesc) return;
+    const amtCheck = validateAmount(newTxAmount);
+    if (!amtCheck.valid) { flash(amtCheck.error); return; }
     const txId = crypto.randomUUID();
-    const amt = parseFloat(newTxAmount);
+    const amt = amtCheck.value;
     const txType = newTxType, txCat = newTxCategory, txDesc = newTxDesc, txDate = newTxDate, txRecurring = newTxRecurring;
     setTransactions(prev => [...prev, { id: txId, type: txType, category: txCat, amount: amt, description: txDesc, date: txDate, recurring: txRecurring }]);
     setShowNewTransaction(false);
@@ -39,14 +43,14 @@ export function useFinance(flash) {
     const userId = await getUserId();
     if (!userId) return;
     const { error } = await supabase.from("transactions").insert({ id: txId, user_id: userId, type: txType, category: txCat, amount: amt, description: txDesc, transaction_date: txDate, recurring: txRecurring });
-    if (error) { console.error("Failed to save transaction:", error); setTransactions(prev => prev.filter(t => t.id !== txId)); flash("Failed to save transaction."); }
+    if (error) { logger.error("Failed to save transaction:", error); setTransactions(prev => prev.filter(t => t.id !== txId)); flash("Failed to save transaction."); }
   };
 
   const deleteTransaction = async (id) => {
     const tx = transactions.find(t => t.id === id);
     setTransactions(prev => prev.filter(t => t.id !== id)); flash("Transaction deleted");
     const { error } = await supabase.from("transactions").delete().eq("id", id);
-    if (error) { console.error("Failed to delete transaction:", error); if (tx) setTransactions(prev => [...prev, tx]); flash("Delete failed."); }
+    if (error) { logger.error("Failed to delete transaction:", error); if (tx) setTransactions(prev => [...prev, tx]); flash("Delete failed."); }
   };
 
   const saveBudget = async (catId) => {
@@ -57,13 +61,15 @@ export function useFinance(flash) {
     const userId = await getUserId();
     if (!userId) return;
     const { error } = await supabase.from("budgets").upsert({ user_id: userId, category_id: catId, budget_limit: val }, { onConflict: "user_id,category_id" });
-    if (error) console.error("Failed to save budget:", error);
+    if (error) logger.error("Failed to save budget:", error);
   };
 
   const addIncome = async () => {
     if (!newIncomeAmount || !newIncomeDesc) return;
+    const incAmtCheck = validateAmount(newIncomeAmount);
+    if (!incAmtCheck.valid) { flash(incAmtCheck.error); return; }
     const incId = crypto.randomUUID();
-    const incAmt = parseFloat(newIncomeAmount);
+    const incAmt = incAmtCheck.value;
     const incDate = new Date().toISOString().split("T")[0];
     const incCat = newIncomeCategory, incDesc = newIncomeDesc, incRecurring = newIncomeRecurring;
     setTransactions(prev => [...prev, { id: incId, type: "income", category: incCat, amount: incAmt, description: incDesc, date: incDate, recurring: incRecurring }]);
@@ -72,7 +78,7 @@ export function useFinance(flash) {
     const userId = await getUserId();
     if (!userId) return;
     const { error } = await supabase.from("transactions").insert({ id: incId, user_id: userId, type: "income", category: incCat, amount: incAmt, description: incDesc, transaction_date: incDate, recurring: incRecurring });
-    if (error) { console.error("Failed to save income:", error); setTransactions(prev => prev.filter(t => t.id !== incId)); flash("Failed to save income."); }
+    if (error) { logger.error("Failed to save income:", error); setTransactions(prev => prev.filter(t => t.id !== incId)); flash("Failed to save income."); }
   };
 
   const togglePaid = async (billId, monthKey) => {
@@ -91,8 +97,12 @@ export function useFinance(flash) {
 
   const addBill = async () => {
     if (!newBillName || !newBillAmount) return;
+    const nameCheck = validateName(newBillName);
+    if (!nameCheck.valid) { flash(nameCheck.error); return; }
+    const billAmtCheck = validateAmount(newBillAmount);
+    if (!billAmtCheck.valid) { flash(billAmtCheck.error); return; }
     const billId = crypto.randomUUID();
-    const amt = parseFloat(newBillAmount);
+    const amt = billAmtCheck.value;
     const bName = newBillName, bDueDay = parseInt(newBillDueDay), bCat = newBillCategory;
     setBills(prev => [...prev, { id: billId, name: bName, amount: amt, dueDay: bDueDay, category: bCat }]);
     setBudgets(prev => {
@@ -105,7 +115,7 @@ export function useFinance(flash) {
     const userId = await getUserId();
     if (!userId) return;
     const { error } = await supabase.from("bills").insert({ id: billId, user_id: userId, name: bName, amount: amt, due_day: bDueDay, category: bCat });
-    if (error) { console.error("Failed to save bill:", error); setBills(prev => prev.filter(b => b.id !== billId)); flash("Failed to save bill."); }
+    if (error) { logger.error("Failed to save bill:", error); setBills(prev => prev.filter(b => b.id !== billId)); flash("Failed to save bill."); }
     const existingBudget = budgets.find(b => b.categoryId === bCat);
     const newLimit = existingBudget ? existingBudget.limit + amt : amt;
     await supabase.from("budgets").upsert({ user_id: userId, category_id: bCat, budget_limit: newLimit }, { onConflict: "user_id,category_id" });
@@ -115,7 +125,7 @@ export function useFinance(flash) {
     const bill = bills.find(b => b.id === id);
     setBills(prev => prev.filter(b => b.id !== id)); flash("Bill removed");
     const { error } = await supabase.from("bills").delete().eq("id", id);
-    if (error) { console.error("Failed to delete bill:", error); if (bill) setBills(prev => [...prev, bill]); flash("Delete failed."); }
+    if (error) { logger.error("Failed to delete bill:", error); if (bill) setBills(prev => [...prev, bill]); flash("Delete failed."); }
   };
 
   const [editingTransaction, setEditingTransaction] = useState(null);
@@ -133,7 +143,7 @@ export function useFinance(flash) {
     if (updates.date !== undefined) dbUpdates.transaction_date = updates.date;
     if (updates.recurring !== undefined) dbUpdates.recurring = updates.recurring;
     const { error } = await supabase.from("transactions").update(dbUpdates).eq("id", id);
-    if (error) { console.error("Failed to update transaction:", error); if (prev) setTransactions(ts => ts.map(t => t.id === id ? prev : t)); flash("Update failed."); }
+    if (error) { logger.error("Failed to update transaction:", error); if (prev) setTransactions(ts => ts.map(t => t.id === id ? prev : t)); flash("Update failed."); }
   };
 
   const updateBill = async (id, updates) => {
@@ -147,7 +157,7 @@ export function useFinance(flash) {
     if (updates.dueDay !== undefined) dbUpdates.due_day = updates.dueDay;
     if (updates.category !== undefined) dbUpdates.category = updates.category;
     const { error } = await supabase.from("bills").update(dbUpdates).eq("id", id);
-    if (error) { console.error("Failed to update bill:", error); if (prev) setBills(bs => bs.map(b => b.id === id ? prev : b)); flash("Update failed."); }
+    if (error) { logger.error("Failed to update bill:", error); if (prev) setBills(bs => bs.map(b => b.id === id ? prev : b)); flash("Update failed."); }
   };
 
   return {

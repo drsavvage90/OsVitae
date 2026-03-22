@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { supabase } from "../lib/supabase";
 import { getUserId } from "../lib/getUserId";
+import { logger } from "../lib/logger";
+import { sanitizeText, MAX_TEXT } from "../lib/validate";
 import { INIT_INBOX } from "../lib/constants";
 
 export function useInbox(flash) {
@@ -11,7 +13,7 @@ export function useInbox(flash) {
   const addInboxItem = async () => {
     if (!newInboxText.trim()) return;
     const id = crypto.randomUUID();
-    const text = newInboxText;
+    const text = sanitizeText(newInboxText, MAX_TEXT);
     setInbox(prev => [{ id, text, createdAt: "Just now", triaged: false }, ...prev]);
     setNewInboxText("");
     flash("Added to inbox!");
@@ -19,7 +21,7 @@ export function useInbox(flash) {
     if (!userId) return;
     const { error } = await supabase.from("inbox_items").insert({ id, user_id: userId, text });
     if (error) {
-      console.error("Failed to save inbox item:", error);
+      logger.error("Failed to save inbox item:", error);
       setInbox(prev => prev.filter(i => i.id !== id));
       flash("Failed to save inbox item.");
     }
@@ -27,12 +29,13 @@ export function useInbox(flash) {
 
   const updateInboxItem = async (id, newText) => {
     const prev = inbox.find(i => i.id === id);
-    setInbox(items => items.map(i => i.id === id ? { ...i, text: newText } : i));
+    const text = sanitizeText(newText, MAX_TEXT);
+    setInbox(items => items.map(i => i.id === id ? { ...i, text } : i));
     setEditingInboxItem(null);
     flash("Item updated!");
-    const { error } = await supabase.from("inbox_items").update({ text: newText }).eq("id", id);
+    const { error } = await supabase.from("inbox_items").update({ text }).eq("id", id);
     if (error) {
-      console.error("Failed to update inbox item:", error);
+      logger.error("Failed to update inbox item:", error);
       if (prev) setInbox(items => items.map(i => i.id === id ? prev : i));
       flash("Update failed.");
     }
@@ -42,7 +45,7 @@ export function useInbox(flash) {
     setInbox(prev => prev.map(item => item.id === id ? { ...item, triaged: true } : item));
     flash("Triaged!");
     const { error } = await supabase.from("inbox_items").update({ triaged: true }).eq("id", id);
-    if (error) console.error("Failed to triage:", error);
+    if (error) logger.error("Failed to triage:", error);
   };
 
   const dismissInbox = async (id) => {
@@ -51,7 +54,7 @@ export function useInbox(flash) {
     flash("Dismissed.");
     const { error } = await supabase.from("inbox_items").delete().eq("id", id);
     if (error) {
-      console.error("Failed to dismiss:", error);
+      logger.error("Failed to dismiss:", error);
       if (item) setInbox(prev => [...prev, item]);
       flash("Dismiss failed.");
     }

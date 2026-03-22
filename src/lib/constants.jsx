@@ -66,7 +66,7 @@ export const THEMES = {
   default: {
     "--app-bg": "linear-gradient(135deg, #dfe7fd 0%, #e8dff5 25%, #f5e6f0 50%, #dceefb 75%, #e0f4f1 100%)",
     "--sidebar-bg": "rgba(255,255,255,0.55)",
-    "--card-bg": "rgba(255,255,255,0.45)",
+    "--card-bg": "rgba(255,255,255,0.55)",
     "--done-bg": "rgba(245,245,250,0.5)",
     "--input-bg": "rgba(255,255,255,0.4)",
     "--subtle-bg": "rgba(255,255,255,0.35)",
@@ -77,8 +77,9 @@ export const THEMES = {
     "--border-hover": "rgba(255,255,255,0.7)",
     "--sidebar-border": "rgba(255,255,255,0.4)",
     "--text": "#1a1a2e",
-    "--muted": "rgba(30,30,60,0.5)",
+    "--muted": "rgba(30,30,60,0.6)",
     "--text-on-primary": "#fff",
+    "--btn-text": "#fff",
     "--primary": "#6366F1",
     "--primary-bg": "rgba(99,102,241,0.12)",
     "--primary-hover-bg": "rgba(99,102,241,0.18)",
@@ -89,6 +90,7 @@ export const THEMES = {
     "--danger": "#EF4444",
     "--warning": "#F59E0B",
     "--success": "#22C55E",
+    "--success-bg": "rgba(34,197,94,0.10)",
     "--card-shadow": "0 2px 8px rgba(0,0,0,0.04), inset 0 1px 0 rgba(255,255,255,0.6)",
     "--card-shadow-sm": "0 1px 4px rgba(0,0,0,0.03), inset 0 1px 0 rgba(255,255,255,0.5)",
     "--card-hover-shadow": "0 8px 32px rgba(99,102,241,0.1), 0 2px 8px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.7)",
@@ -111,17 +113,18 @@ export const THEMES = {
     "--sidebar-bg": "#0F1A14",
     "--card-bg": "#152119",
     "--done-bg": "#111B15",
-    "--input-bg": "rgba(74,222,128,0.04)",
+    "--input-bg": "rgba(74,222,128,0.08)",
     "--subtle-bg": "rgba(74,222,128,0.06)",
     "--hover-bg": "rgba(74,222,128,0.05)",
-    "--card-border": "rgba(74,222,128,0.10)",
+    "--card-border": "rgba(74,222,128,0.16)",
     "--border": "rgba(74,222,128,0.14)",
     "--border-light": "rgba(74,222,128,0.08)",
     "--border-hover": "rgba(74,222,128,0.25)",
     "--sidebar-border": "rgba(74,222,128,0.10)",
     "--text": "#E2E8F0",
-    "--muted": "rgba(255,255,255,0.45)",
+    "--muted": "rgba(255,255,255,0.60)",
     "--text-on-primary": "#fff",
+    "--btn-text": "#0A120E",
     "--primary": "#4ADE80",
     "--primary-bg": "rgba(74,222,128,0.12)",
     "--primary-hover-bg": "rgba(74,222,128,0.18)",
@@ -132,6 +135,7 @@ export const THEMES = {
     "--danger": "#FF3D3D",
     "--warning": "#FFB000",
     "--success": "#00E676",
+    "--success-bg": "rgba(0,230,118,0.10)",
     "--card-shadow": "0 1px 4px rgba(0,0,0,0.3)",
     "--card-shadow-sm": "0 1px 3px rgba(0,0,0,0.2)",
     "--card-hover-shadow": "0 4px 20px rgba(74,222,128,0.12)",
@@ -144,7 +148,7 @@ export const THEMES = {
     "--scrollbar-thumb": "rgba(74,222,128,0.20)",
     "--focus-border": "rgba(74,222,128,0.5)",
     "--focus-shadow": "0 0 0 3px rgba(74,222,128,0.15)",
-    "--checkbox-border": "rgba(255,255,255,0.25)",
+    "--checkbox-border": "rgba(74,222,128,0.35)",
     "--heading": "'Inter','SF Pro Display',-apple-system,sans-serif",
     "--body": "'Inter','SF Pro Text',-apple-system,sans-serif",
     "--mono": "'JetBrains Mono','SF Mono',monospace",
@@ -182,13 +186,9 @@ export const ALL_FINANCE_CATS = [...FINANCE_CATEGORIES.income, ...FINANCE_CATEGO
 // ═══════════════════════════════════════
 export const INIT_WORKSPACES = [];
 export const INIT_TASKS = [];
-export const INIT_CONTACTS = [];
 export const INIT_HABITS = [];
-export const INIT_GOALS = [];
 export const INIT_TIME_BLOCKS = [];
-export const INIT_BOOKMARKS = [];
 export const INIT_INBOX = [];
-export const INIT_TEMPLATES = [];
 export const INIT_WIKI = [];
 export const INIT_TRANSACTIONS = [];
 export const INIT_BUDGETS = [];

@@ -1,7 +1,8 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { corsHeaders, handleCors } from "../_shared/cors.ts";
 import { getSupabaseForUser } from "../_shared/auth.ts";
 import { decrypt } from "../_shared/crypto.ts";
+import { errorResponse } from "../_shared/errors.ts";
 import {
   fetchEvents,
   parseVEvent,
@@ -20,7 +21,7 @@ serve(async (req: Request) => {
 
     const { data: creds } = await supabase
       .from("apple_credentials")
-      .select("*")
+      .select("apple_id, app_password_encrypted, calendar_home_set, selected_calendar_id, last_sync_at")
       .eq("user_id", userId)
       .single();
 
@@ -31,7 +32,19 @@ serve(async (req: Request) => {
       );
     }
 
+    // Rate limit: minimum 30 seconds between syncs
+    if (creds.last_sync_at) {
+      const elapsed = Date.now() - new Date(creds.last_sync_at).getTime();
+      if (elapsed < 30_000) {
+        return new Response(
+          JSON.stringify({ error: "Please wait before syncing again" }),
+          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+
     const password = await decrypt(creds.app_password_encrypted);
+    const appleId = await decrypt(appleId);
     const calendarUrl = creds.selected_calendar_id;
 
     // Date range: 30 days back, 60 days forward
@@ -42,7 +55,7 @@ serve(async (req: Request) => {
     const dateTo = to.toISOString().slice(0, 10).replace(/-/g, "");
 
     // Fetch remote events
-    const remoteEvents = await fetchEvents(calendarUrl, creds.apple_id, password, dateFrom, dateTo);
+    const remoteEvents = await fetchEvents(calendarUrl, appleId, password, dateFrom, dateTo);
 
     // Fetch local time_blocks
     const fromDate = from.toISOString().slice(0, 10);
@@ -132,7 +145,7 @@ serve(async (req: Request) => {
       const href = calendarUrl.replace(/\/$/, "") + "/" + uid + ".ics";
 
       try {
-        const result = await putEvent(href, ical, creds.apple_id, password);
+        const result = await putEvent(href, ical, appleId, password);
         await supabase
           .from("time_blocks")
           .update({
@@ -167,10 +180,6 @@ serve(async (req: Request) => {
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (e) {
-    console.error("caldav-sync-calendar error:", e);
-    return new Response(
-      JSON.stringify({ error: "Calendar sync failed: " + String(e) }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return errorResponse("Calendar sync", e);
   }
 });

@@ -1,5 +1,11 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+/**
+ * Returns a Supabase client with the service role key (bypasses RLS).
+ * SECURITY: Only use for operations that genuinely require admin access
+ * (e.g., cross-user queries, system-level maintenance). Prefer
+ * getSupabaseForUser() for all user-scoped operations.
+ */
 export function getSupabaseAdmin() {
   return createClient(
     Deno.env.get("SUPABASE_URL")!,

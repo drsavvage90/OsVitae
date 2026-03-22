@@ -2,19 +2,20 @@ import jwt from 'jsonwebtoken'
 import fs from 'fs'
 import path from 'path'
 
-// ── CONFIGURE THESE ──────────────────────────
-const TEAM_ID = '449BY8M6PP'
-const CLIENT_ID = 'com.osvitae.web'
-const KEY_ID = process.argv[2] // pass as first argument
+// ── CONFIGURE VIA ENV or CLI ──────────────────
+const TEAM_ID = process.env.APPLE_TEAM_ID || process.argv[2]
+const CLIENT_ID = process.env.APPLE_CLIENT_ID || process.argv[3]
+const KEY_ID = process.argv[4] || process.env.APPLE_KEY_ID
 
-if (!KEY_ID) {
-  console.error('Usage: node scripts/generate-apple-secret.js <KEY_ID> <path-to-.p8-file>')
+if (!TEAM_ID || !CLIENT_ID || !KEY_ID) {
+  console.error('Usage: node scripts/generate-apple-secret.js <TEAM_ID> <CLIENT_ID> <KEY_ID> <path-to-.p8-file>')
+  console.error('  Or set APPLE_TEAM_ID, APPLE_CLIENT_ID, APPLE_KEY_ID env vars and: node scripts/generate-apple-secret.js <path-to-.p8-file>')
   process.exit(1)
 }
 
-const p8Path = process.argv[3] // pass as second argument
+const p8Path = process.argv[5] || process.argv[2] // last arg or first if using env vars
 if (!p8Path) {
-  console.error('Usage: node scripts/generate-apple-secret.js <KEY_ID> <path-to-.p8-file>')
+  console.error('Please provide the path to the .p8 file as the last argument')
   process.exit(1)
 }
 

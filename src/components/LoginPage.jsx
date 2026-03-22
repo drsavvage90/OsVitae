@@ -1,7 +1,11 @@
+import { useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { logger } from '../lib/logger'
 import { Zap } from 'lucide-react'
+import PrivacyPolicy from './PrivacyPolicy'
 
 export default function LoginPage() {
+  const [showPrivacy, setShowPrivacy] = useState(false)
   const signInWithApple = async () => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'apple',
@@ -9,7 +13,7 @@ export default function LoginPage() {
         redirectTo: window.location.origin,
       },
     })
-    if (error) console.error('Sign in error:', error.message)
+    if (error) logger.error('Sign in error:', error.message)
   }
 
   return (
@@ -50,7 +54,7 @@ export default function LoginPage() {
           fontSize: 14, color: '#6B7280', margin: '0 0 36px',
           lineHeight: 1.5,
         }}>
-          Tasks, Habits, Goals, Focus &amp; Everything In Between
+          Tasks, Habits, Focus &amp; Everything In Between
         </p>
 
         <button
@@ -86,8 +90,31 @@ export default function LoginPage() {
           lineHeight: 1.5,
         }}>
           Your data is encrypted and stored securely.
+          <br />
+          <button onClick={() => setShowPrivacy(true)} style={{
+            background: 'none', border: 'none', color: '#6366f1',
+            cursor: 'pointer', fontSize: 11, textDecoration: 'underline', padding: 0, marginTop: 4,
+          }}>Privacy Policy</button>
         </p>
       </div>
+
+      {showPrivacy && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: 20,
+        }} onClick={() => setShowPrivacy(false)}>
+          <div style={{
+            background: '#fff', borderRadius: 16, padding: '32px 28px', maxWidth: 560,
+            width: '100%', maxHeight: '80vh', overflowY: 'auto',
+          }} onClick={e => e.stopPropagation()}>
+            <PrivacyPolicy />
+            <button onClick={() => setShowPrivacy(false)} style={{
+              marginTop: 20, padding: '10px 24px', borderRadius: 8, border: 'none',
+              background: '#000', color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600,
+            }}>Close</button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -1,8 +1,8 @@
+import { useState } from "react";
 import {
-  Home, Inbox, Calendar, ClipboardList, Timer, Repeat, Flag,
-  Wallet, PenTool, Users, Bookmark,
-  Layout, Library, RefreshCw, Trophy, Settings, Sun, Moon,
-  ArrowLeft, Plus, ChevronDown, Zap,
+  Home, Inbox, Calendar, ClipboardList, Timer, Repeat,
+  Wallet, Library, RefreshCw, Trophy, Settings, Sun, Moon,
+  ArrowLeft, Plus, ChevronDown, ChevronRight, Zap,
 } from "lucide-react";
 import { getWsIcon } from "../lib/constants";
 
@@ -11,11 +11,15 @@ export default function Sidebar({
   page, setPage,
   themeName, toggleTheme,
   timerActive, timeLeft, fmt,
-  inbox, ws, tasks,
-  activeWsId, goWs, goToday,
+  inbox, ws, tasks, projects,
+  activeWsId, activeProjectId, goWs, goProject, goToday,
   sidebarSections, setSidebarSections,
-  setShowNewWs, setShowMobileSidebar, setTimerTaskId,
+  setShowNewWs, setShowNewProject, setNewProjectWsId,
+  setShowMobileSidebar, setTimerTaskId,
 }) {
+  const [expandedWs, setExpandedWs] = useState({});
+  const toggleWsExpand = (id) => setExpandedWs(prev => ({ ...prev, [id]: !prev[id] }));
+
   return (
     <div style={{
       width: collapsed ? 72 : 250, flexShrink: 0, height: "100%",
@@ -71,7 +75,6 @@ export default function Sidebar({
           {!collapsed && <div onClick={() => setSidebarSections(s => ({ ...s, track: !s.track }))} style={{ fontFamily: "var(--mono)", fontSize: 9, color: "var(--muted)", textTransform: "uppercase", letterSpacing: 2, padding: "0 10px", marginBottom: 8, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between" }}>Track<ChevronDown size={12} style={{ transition: "transform 0.2s", transform: sidebarSections.track ? "none" : "rotate(-90deg)" }} /></div>}
           {sidebarSections.track && [
             { icon: <Repeat size={18} />, label: "Habits", id: "habits" },
-            { icon: <Flag size={18} />, label: "Goals", id: "goals" },
             { icon: <Wallet size={18} />, label: "Finance", id: "finance" },
           ].map(nav => (
             <div key={nav.id} onClick={() => { setPage(nav.id); setShowMobileSidebar(false); }} style={{
@@ -94,10 +97,6 @@ export default function Sidebar({
         <div style={{ padding: "8px 12px 2px" }}>
           {!collapsed && <div onClick={() => setSidebarSections(s => ({ ...s, library: !s.library }))} style={{ fontFamily: "var(--mono)", fontSize: 9, color: "var(--muted)", textTransform: "uppercase", letterSpacing: 2, padding: "0 10px", marginBottom: 8, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between" }}>Library<ChevronDown size={12} style={{ transition: "transform 0.2s", transform: sidebarSections.library ? "none" : "rotate(-90deg)" }} /></div>}
           {sidebarSections.library && [
-            { icon: <PenTool size={18} />, label: "Scratchpad", id: "scratchpad" },
-            { icon: <Users size={18} />, label: "Contacts", id: "contacts" },
-            { icon: <Bookmark size={18} />, label: "Bookmarks", id: "bookmarks" },
-            { icon: <Layout size={18} />, label: "Templates", id: "templates" },
             { icon: <Library size={18} />, label: "Wiki", id: "wiki" },
             { icon: <RefreshCw size={18} />, label: "Review", id: "review" },
             { icon: <Trophy size={18} />, label: "Rewards", id: "rewards" },
@@ -124,23 +123,71 @@ export default function Sidebar({
             {!collapsed && <div onClick={() => setSidebarSections(s => ({ ...s, workspaces: !s.workspaces }))} style={{ fontFamily: "var(--mono)", fontSize: 9, color: "var(--muted)", textTransform: "uppercase", letterSpacing: 2, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 4, flex: 1 }}>Workspaces<ChevronDown size={12} style={{ transition: "transform 0.2s", transform: sidebarSections.workspaces ? "none" : "rotate(-90deg)" }} /></div>}
             {!collapsed && sidebarSections.workspaces && <div onClick={() => setShowNewWs(true)} style={{ width: 20, height: 20, borderRadius: 6, background: "var(--subtle-bg)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--muted)", cursor: "pointer" }}><Plus size={13} /></div>}
           </div>
-          {sidebarSections.workspaces && ws.map(w => (
-            <div key={w.id} onClick={() => goWs(w.id)} style={{
-              display: "flex", alignItems: "center", gap: 10, padding: collapsed ? "9px 18px" : "9px 14px",
-              borderRadius: 12, cursor: "pointer", marginBottom: 2,
-              background: page === "workspace" && activeWsId === w.id ? `${w.color}12` : "transparent",
-              transition: "all 0.15s",
-            }}
-              onMouseEnter={e => e.currentTarget.style.background = page === "workspace" && activeWsId === w.id ? `${w.color}18` : "var(--hover-bg)"}
-              onMouseLeave={e => e.currentTarget.style.background = page === "workspace" && activeWsId === w.id ? `${w.color}12` : "transparent"}
-            >
-              <div style={{ width: 28, height: 28, borderRadius: 9, flexShrink: 0, background: `${w.color}18`, display: "flex", alignItems: "center", justifyContent: "center", color: w.color }}>{getWsIcon(w.icon, 14)}</div>
-              {!collapsed && <>
-                <span style={{ fontFamily: "var(--body)", fontSize: 13, color: "var(--text)", fontWeight: 500, flex: 1 }}>{w.name}</span>
-                <span style={{ fontFamily: "var(--mono)", fontSize: 10, color: "var(--muted)" }}>{tasks.filter(t => t.wsId === w.id).length}</span>
-              </>}
-            </div>
-          ))}
+          {sidebarSections.workspaces && ws.map(w => {
+            const wsProjects = projects.filter(p => p.wsId === w.id);
+            const isExpanded = expandedWs[w.id];
+            const isWsActive = (page === "workspace" && activeWsId === w.id) || (page === "project" && activeWsId === w.id);
+            return (
+              <div key={w.id}>
+                <div style={{
+                  display: "flex", alignItems: "center", gap: collapsed ? 0 : 6, padding: collapsed ? "9px 18px" : "9px 10px",
+                  borderRadius: 12, cursor: "pointer", marginBottom: 2,
+                  background: isWsActive ? `${w.color}12` : "transparent",
+                  transition: "all 0.15s",
+                }}
+                  onMouseEnter={e => e.currentTarget.style.background = isWsActive ? `${w.color}18` : "var(--hover-bg)"}
+                  onMouseLeave={e => e.currentTarget.style.background = isWsActive ? `${w.color}12` : "transparent"}
+                >
+                  {!collapsed && wsProjects.length > 0 && (
+                    <div onClick={(e) => { e.stopPropagation(); toggleWsExpand(w.id); }} style={{ width: 16, height: 16, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--muted)", flexShrink: 0 }}>
+                      <ChevronRight size={11} style={{ transition: "transform 0.2s", transform: isExpanded ? "rotate(90deg)" : "none" }} />
+                    </div>
+                  )}
+                  {!collapsed && wsProjects.length === 0 && <div style={{ width: 16, flexShrink: 0 }} />}
+                  <div onClick={() => goWs(w.id)} style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0 }}>
+                    <div style={{ width: 28, height: 28, borderRadius: 9, flexShrink: 0, background: `${w.color}18`, display: "flex", alignItems: "center", justifyContent: "center", color: w.color }}>{getWsIcon(w.icon, 14)}</div>
+                    {!collapsed && <>
+                      <span style={{ fontFamily: "var(--body)", fontSize: 13, color: "var(--text)", fontWeight: 500, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{w.name}</span>
+                      <span style={{ fontFamily: "var(--mono)", fontSize: 10, color: "var(--muted)" }}>{wsProjects.length}</span>
+                    </>}
+                  </div>
+                </div>
+                {/* Nested projects */}
+                {!collapsed && isExpanded && wsProjects.map(p => {
+                  const isProjectActive = page === "project" && activeProjectId === p.id;
+                  const projectTaskCount = tasks.filter(t => t.projectId === p.id).length;
+                  return (
+                    <div key={p.id} onClick={() => goProject(p.id)} style={{
+                      display: "flex", alignItems: "center", gap: 8, padding: "7px 14px 7px 42px",
+                      borderRadius: 10, cursor: "pointer", marginBottom: 1,
+                      background: isProjectActive ? `${p.color}12` : "transparent",
+                      transition: "all 0.15s",
+                    }}
+                      onMouseEnter={e => e.currentTarget.style.background = isProjectActive ? `${p.color}18` : "var(--hover-bg)"}
+                      onMouseLeave={e => e.currentTarget.style.background = isProjectActive ? `${p.color}12` : "transparent"}
+                    >
+                      <div style={{ width: 20, height: 20, borderRadius: 6, flexShrink: 0, background: `${p.color}18`, display: "flex", alignItems: "center", justifyContent: "center", color: p.color }}>{getWsIcon(p.icon, 10)}</div>
+                      <span style={{ fontFamily: "var(--body)", fontSize: 12, color: isProjectActive ? p.color : "var(--text)", fontWeight: isProjectActive ? 600 : 400, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</span>
+                      <span style={{ fontFamily: "var(--mono)", fontSize: 9, color: "var(--muted)" }}>{projectTaskCount}</span>
+                    </div>
+                  );
+                })}
+                {!collapsed && isExpanded && (
+                  <div onClick={() => { setNewProjectWsId(w.id); setShowNewProject(true); }} style={{
+                    display: "flex", alignItems: "center", gap: 8, padding: "6px 14px 6px 42px",
+                    borderRadius: 10, cursor: "pointer", marginBottom: 2,
+                    color: "var(--muted)", transition: "all 0.15s",
+                  }}
+                    onMouseEnter={e => { e.currentTarget.style.background = "var(--hover-bg)"; e.currentTarget.style.color = w.color; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--muted)"; }}
+                  >
+                    <Plus size={12} />
+                    <span style={{ fontFamily: "var(--body)", fontSize: 11, fontWeight: 500 }}>New Project</span>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
 

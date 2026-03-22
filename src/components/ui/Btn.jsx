@@ -1,7 +1,7 @@
 const Btn = ({ children, primary, color, small, style = {}, onClick }) => (
   <button onClick={onClick} style={{
-    background: primary ? (color || "var(--text)") : "var(--subtle-bg)",
-    color: primary ? "var(--text-on-primary)" : "var(--muted)", border: primary ? "none" : "1px solid var(--border)",
+    background: primary ? (color || "var(--primary)") : "var(--subtle-bg)",
+    color: primary ? "var(--btn-text)" : "var(--muted)", border: primary ? "none" : "1px solid var(--border)",
     borderRadius: small ? 8 : 11, padding: small ? "5px 12px" : "8px 18px",
     fontFamily: "var(--body)", fontSize: small ? 11 : 12, fontWeight: 600,
     cursor: "pointer", transition: "all 0.2s", ...style,

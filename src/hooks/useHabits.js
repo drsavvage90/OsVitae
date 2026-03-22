@@ -1,13 +1,38 @@
 import { useState } from "react";
 import { supabase } from "../lib/supabase";
 import { getUserId } from "../lib/getUserId";
+import { logger } from "../lib/logger";
+import { validateName } from "../lib/validate";
 import { INIT_HABITS } from "../lib/constants";
+
+const ALL_DAYS = [0, 1, 2, 3, 4, 5, 6];
+const WEEKDAYS = [1, 2, 3, 4, 5];
+const WEEKENDS = [0, 6];
+
+export function daysForFrequency(freq, customDays) {
+  if (freq === "daily") return ALL_DAYS;
+  if (freq === "weekdays") return WEEKDAYS;
+  if (freq === "weekends") return WEEKENDS;
+  return customDays || ALL_DAYS;
+}
+
+export function frequencyLabel(freq, scheduleDays) {
+  if (freq === "daily") return "Every day";
+  if (freq === "weekdays") return "Weekdays";
+  if (freq === "weekends") return "Weekends";
+  if (freq === "custom" && scheduleDays?.length) {
+    const names = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    return scheduleDays.sort((a, b) => a - b).map(d => names[d]).join(", ");
+  }
+  return "Custom";
+}
 
 export function useHabits(flash, addXp) {
   const [habits, setHabits] = useState(INIT_HABITS);
   const [showNewHabit, setShowNewHabit] = useState(false);
   const [newHabitName, setNewHabitName] = useState("");
   const [newHabitFreq, setNewHabitFreq] = useState("daily");
+  const [newHabitDays, setNewHabitDays] = useState([...ALL_DAYS]);
   const [newHabitColor, setNewHabitColor] = useState("#22C55E");
   const [editingHabit, setEditingHabit] = useState(null);
 
@@ -34,17 +59,19 @@ export function useHabits(flash, addXp) {
   };
 
   const createHabit = async () => {
-    if (!newHabitName.trim()) return;
+    const nameCheck = validateName(newHabitName);
+    if (!nameCheck.valid) { flash(nameCheck.error); return; }
     const id = crypto.randomUUID();
-    const name = newHabitName, color = newHabitColor, freq = newHabitFreq;
-    setHabits(prev => [...prev, { id, name, icon: "Star", color, frequency: freq, completions: [], streak: 0 }]);
-    setNewHabitName(""); setShowNewHabit(false);
+    const name = nameCheck.value, color = newHabitColor, freq = newHabitFreq;
+    const scheduleDays = daysForFrequency(freq, newHabitDays);
+    setHabits(prev => [...prev, { id, name, icon: "Star", color, frequency: freq, scheduleDays, completions: [], streak: 0 }]);
+    setNewHabitName(""); setNewHabitFreq("daily"); setNewHabitDays([...ALL_DAYS]); setShowNewHabit(false);
     flash("Habit created!");
     const userId = await getUserId();
     if (!userId) return;
-    const { error } = await supabase.from("habits").insert({ id, user_id: userId, name, icon: "Star", color, frequency: freq });
+    const { error } = await supabase.from("habits").insert({ id, user_id: userId, name, icon: "Star", color, frequency: freq, schedule_days: scheduleDays });
     if (error) {
-      console.error("Failed to save habit:", error);
+      logger.error("Failed to save habit:", error);
       setHabits(prev => prev.filter(h => h.id !== id));
       flash("Failed to save habit.");
     }
@@ -59,9 +86,10 @@ export function useHabits(flash, addXp) {
     if (updates.name !== undefined) dbUpdates.name = updates.name;
     if (updates.color !== undefined) dbUpdates.color = updates.color;
     if (updates.frequency !== undefined) dbUpdates.frequency = updates.frequency;
+    if (updates.scheduleDays !== undefined) dbUpdates.schedule_days = updates.scheduleDays;
     const { error } = await supabase.from("habits").update(dbUpdates).eq("id", id);
     if (error) {
-      console.error("Failed to update habit:", error);
+      logger.error("Failed to update habit:", error);
       if (prev) setHabits(hs => hs.map(h => h.id === id ? prev : h));
       flash("Update failed.");
     }
@@ -72,7 +100,7 @@ export function useHabits(flash, addXp) {
     setHabits(prev => prev.filter(h => h.id !== id));
     flash("Habit deleted.");
     const { error } = await supabase.from("habits").delete().eq("id", id);
-    if (error) { console.error("Failed to delete habit:", error); if (habit) setHabits(prev => [...prev, habit]); flash("Delete failed."); }
+    if (error) { logger.error("Failed to delete habit:", error); if (habit) setHabits(prev => [...prev, habit]); flash("Delete failed."); }
   };
 
   return {
@@ -80,6 +108,7 @@ export function useHabits(flash, addXp) {
     showNewHabit, setShowNewHabit,
     newHabitName, setNewHabitName,
     newHabitFreq, setNewHabitFreq,
+    newHabitDays, setNewHabitDays,
     newHabitColor, setNewHabitColor,
     editingHabit, setEditingHabit,
     toggleHabit, createHabit, updateHabit, deleteHabit,

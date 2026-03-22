@@ -76,11 +76,13 @@ export default function FinancePage({
                 <span style={{ fontFamily:"var(--mono)",fontSize:14,fontWeight:700,color:tx.type==="income"?"#22C55E":"#EF4444" }}>
                   {tx.type==="income"?"+":"-"}${tx.amount.toFixed(2)}
                 </span>
-                <div onClick={() => setEditingTransaction(tx)} style={{ width:24,height:24,borderRadius:6,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",color:"var(--muted)" }}
-                  onMouseEnter={e => e.currentTarget.style.color="var(--primary)"} onMouseLeave={e => e.currentTarget.style.color="var(--muted)"}
+                <div role="button" onClick={() => setEditingTransaction(tx)} style={{ width:28,height:28,borderRadius:7,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",color:"var(--muted)",transition:"all 0.15s" }}
+                  onMouseEnter={e => { e.currentTarget.style.color="var(--primary)"; e.currentTarget.style.background="var(--subtle-bg)"; }}
+                  onMouseLeave={e => { e.currentTarget.style.color="var(--muted)"; e.currentTarget.style.background="transparent"; }}
                 ><Pencil size={14}/></div>
-                <div onClick={() => deleteTransaction(tx.id)} style={{ width:24,height:24,borderRadius:6,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",color:"var(--muted)" }}
-                  onMouseEnter={e => e.currentTarget.style.color="#EF4444"} onMouseLeave={e => e.currentTarget.style.color="var(--muted)"}
+                <div role="button" onClick={() => deleteTransaction(tx.id)} style={{ width:28,height:28,borderRadius:7,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",color:"var(--muted)",transition:"all 0.15s" }}
+                  onMouseEnter={e => { e.currentTarget.style.color="#EF4444"; e.currentTarget.style.background="rgba(239,68,68,0.08)"; }}
+                  onMouseLeave={e => { e.currentTarget.style.color="var(--muted)"; e.currentTarget.style.background="transparent"; }}
                 ><Trash2 size={14}/></div>
               </div>
             </Glass>
@@ -132,7 +134,7 @@ export default function FinancePage({
             </div>
             <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between" }}>
               <label onClick={() => setNewIncomeRecurring(!newIncomeRecurring)} style={{ display:"flex",alignItems:"center",gap:8,cursor:"pointer",fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600 }}>
-                <div style={{ width:18,height:18,borderRadius:5,border:newIncomeRecurring?"none":"2px solid rgba(0,0,0,0.15)",background:newIncomeRecurring?"#22C55E":"transparent",display:"flex",alignItems:"center",justifyContent:"center",transition:"all 0.15s" }}>
+                <div style={{ width:18,height:18,borderRadius:5,border:newIncomeRecurring?"none":"2px solid var(--checkbox-border)",background:newIncomeRecurring?"#22C55E":"transparent",display:"flex",alignItems:"center",justifyContent:"center",transition:"all 0.15s" }}>
                   {newIncomeRecurring && <Check size={12} color="#fff"/>}
                 </div>
                 Recurring (monthly)
@@ -158,11 +160,13 @@ export default function FinancePage({
               </div>
               <div style={{ textAlign:"right",display:"flex",alignItems:"center",gap:10 }}>
                 <span style={{ fontFamily:"var(--mono)",fontSize:14,fontWeight:700,color:"#22C55E" }}>+${tx.amount.toFixed(2)}</span>
-                <div onClick={() => setEditingTransaction(tx)} style={{ width:24,height:24,borderRadius:6,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",color:"var(--muted)" }}
-                  onMouseEnter={e => e.currentTarget.style.color="var(--primary)"} onMouseLeave={e => e.currentTarget.style.color="var(--muted)"}
+                <div role="button" onClick={() => setEditingTransaction(tx)} style={{ width:28,height:28,borderRadius:7,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",color:"var(--muted)",transition:"all 0.15s" }}
+                  onMouseEnter={e => { e.currentTarget.style.color="var(--primary)"; e.currentTarget.style.background="var(--subtle-bg)"; }}
+                  onMouseLeave={e => { e.currentTarget.style.color="var(--muted)"; e.currentTarget.style.background="transparent"; }}
                 ><Pencil size={14}/></div>
-                <div onClick={() => deleteTransaction(tx.id)} style={{ width:24,height:24,borderRadius:6,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",color:"var(--muted)" }}
-                  onMouseEnter={e => e.currentTarget.style.color="#EF4444"} onMouseLeave={e => e.currentTarget.style.color="var(--muted)"}
+                <div role="button" onClick={() => deleteTransaction(tx.id)} style={{ width:28,height:28,borderRadius:7,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",color:"var(--muted)",transition:"all 0.15s" }}
+                  onMouseEnter={e => { e.currentTarget.style.color="#EF4444"; e.currentTarget.style.background="rgba(239,68,68,0.08)"; }}
+                  onMouseLeave={e => { e.currentTarget.style.color="var(--muted)"; e.currentTarget.style.background="transparent"; }}
                 ><Trash2 size={14}/></div>
               </div>
             </Glass>
@@ -204,7 +208,7 @@ export default function FinancePage({
 
           {bills.length > 0 && (
             <div style={{ marginBottom:20 }}>
-              <div style={{ height:8,background:"rgba(0,0,0,0.06)",borderRadius:8,overflow:"hidden" }}>
+              <div style={{ height:8,background:"var(--subtle-bg)",borderRadius:8,overflow:"hidden" }}>
                 <div style={{ width:`${bills.length > 0 ? (paidThisMonth/bills.length)*100 : 0}%`,height:"100%",borderRadius:8,background:"linear-gradient(90deg, #22C55E, #4ADE80)",transition:"width 0.5s" }}/>
               </div>
               <div style={{ fontFamily:"var(--mono)",fontSize:11,color:"var(--muted)",marginTop:6,textAlign:"center" }}>{paidThisMonth} of {bills.length} bills paid for {months.find(m => m.isCurrent).full}</div>
@@ -290,11 +294,13 @@ export default function FinancePage({
                         );
                       })}
                       <td style={{ padding:"6px 8px",display:"flex",gap:4 }}>
-                        <div onClick={() => setEditingBill(bill)} style={{ width:24,height:24,borderRadius:6,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",color:"var(--muted)" }}
-                          onMouseEnter={e => e.currentTarget.style.color="var(--primary)"} onMouseLeave={e => e.currentTarget.style.color="var(--muted)"}
+                        <div role="button" onClick={() => setEditingBill(bill)} style={{ width:28,height:28,borderRadius:7,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",color:"var(--muted)",transition:"all 0.15s" }}
+                          onMouseEnter={e => { e.currentTarget.style.color="var(--primary)"; e.currentTarget.style.background="var(--subtle-bg)"; }}
+                          onMouseLeave={e => { e.currentTarget.style.color="var(--muted)"; e.currentTarget.style.background="transparent"; }}
                         ><Pencil size={14}/></div>
-                        <div onClick={() => deleteBill(bill.id)} style={{ width:24,height:24,borderRadius:6,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",color:"var(--muted)" }}
-                          onMouseEnter={e => e.currentTarget.style.color="#EF4444"} onMouseLeave={e => e.currentTarget.style.color="var(--muted)"}
+                        <div role="button" onClick={() => deleteBill(bill.id)} style={{ width:28,height:28,borderRadius:7,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",color:"var(--muted)",transition:"all 0.15s" }}
+                          onMouseEnter={e => { e.currentTarget.style.color="#EF4444"; e.currentTarget.style.background="rgba(239,68,68,0.08)"; }}
+                          onMouseLeave={e => { e.currentTarget.style.color="var(--muted)"; e.currentTarget.style.background="transparent"; }}
                         ><Trash2 size={14}/></div>
                       </td>
                     </tr>
@@ -350,7 +356,7 @@ export default function FinancePage({
                       <div style={{ display:"flex",alignItems:"center",gap:4 }}>
                         <span style={{ fontFamily:"var(--mono)",fontSize:12,color:"var(--muted)" }}>$</span>
                         <input value={editBudgetVal} onChange={e=>setEditBudgetVal(e.target.value)} onKeyDown={e=>e.key==="Enter"&&saveBudget(cat.id)}
-                          style={{ width:70,padding:"4px 8px",borderRadius:6,border:"1px solid rgba(0,0,0,0.1)",fontFamily:"var(--mono)",fontSize:12,outline:"none",background:"var(--subtle-bg)",color:"var(--text)" }} autoFocus/>
+                          style={{ width:70,padding:"4px 8px",borderRadius:6,border:"1px solid var(--border)",fontFamily:"var(--mono)",fontSize:12,outline:"none",background:"var(--subtle-bg)",color:"var(--text)" }} autoFocus/>
                         <div onClick={()=>saveBudget(cat.id)} style={{ cursor:"pointer",color:"#22C55E" }}><Check size={14}/></div>
                         <div onClick={()=>setEditingBudget(null)} style={{ cursor:"pointer",color:"var(--muted)" }}><X size={14}/></div>
                       </div>
@@ -362,7 +368,7 @@ export default function FinancePage({
                     )}
                   </div>
                 </div>
-                <div style={{ height:6,background:"rgba(0,0,0,0.06)",borderRadius:6,overflow:"hidden" }}>
+                <div style={{ height:6,background:"var(--subtle-bg)",borderRadius:6,overflow:"hidden" }}>
                   <div style={{ width:`${pct}%`,height:"100%",borderRadius:6,background:over?"#EF4444":pct>75?"#FBBF24":cat.color,transition:"width 0.5s" }}/>
                 </div>
                 {over && <div style={{ fontFamily:"var(--mono)",fontSize:10,color:"#EF4444",marginTop:4,fontWeight:600 }}>Over budget by ${(spent-limit).toFixed(2)}</div>}
