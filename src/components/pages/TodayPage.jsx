@@ -297,25 +297,27 @@ export default function TodayPage({
         {/* Sidebar */}
         <div className="today-sidebar" style={{ width:280,flexShrink:0 }}>
           {/* Today's Tasks */}
-          <Glass style={{ padding:18,marginBottom:14 }}>
+          <Glass style={{ padding:"18px 18px 14px 18px",marginBottom:14 }}>
             <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10 }}>
               <h3 style={{ fontFamily:"var(--heading)",fontSize:13,color:"var(--text)",margin:0,fontWeight:700 }}>Today's Tasks</h3>
               <Btn small primary onClick={() => { setNewTaskWs(null); setShowNewTask(true); }}>+ Add</Btn>
             </div>
-            {tasks.filter(t => !t.done).length === 0 && (
-              <div style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",padding:"8px 0",textAlign:"center" }}>All done for today!</div>
-            )}
-            {tasks.filter(t => !t.done).map((task, i) => (
-              <TaskRow key={task.id} task={task} idx={i} />
-            ))}
-            {tasks.filter(t => t.done).length > 0 && (
-              <div style={{ marginTop:10,paddingTop:8,borderTop:"1px solid var(--subtle-bg)" }}>
-                <div style={{ fontFamily:"var(--mono)",fontSize:9,color:"var(--muted)",fontWeight:600,marginBottom:6,textTransform:"uppercase" }}>Completed</div>
-                {tasks.filter(t => t.done).map((task, i) => (
-                  <TaskRow key={task.id} task={task} idx={i} />
-                ))}
-              </div>
-            )}
+            <div style={{ maxHeight: 350, overflowY: "auto", paddingRight: 4, paddingBottom: 4 }}>
+              {tasks.filter(t => !t.done).length === 0 && (
+                <div style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",padding:"8px 0",textAlign:"center" }}>All done for today!</div>
+              )}
+              {tasks.filter(t => !t.done).map((task, i) => (
+                <TaskRow key={task.id} task={task} idx={i} />
+              ))}
+              {tasks.filter(t => t.done).length > 0 && (
+                <div style={{ marginTop:10,paddingTop:8,borderTop:"1px solid var(--subtle-bg)" }}>
+                  <div style={{ fontFamily:"var(--mono)",fontSize:9,color:"var(--muted)",fontWeight:600,marginBottom:6,textTransform:"uppercase" }}>Completed</div>
+                  {tasks.filter(t => t.done).map((task, i) => (
+                    <TaskRow key={task.id} task={task} idx={i} />
+                  ))}
+                </div>
+              )}
+            </div>
           </Glass>
 
           {/* Today's Habits */}

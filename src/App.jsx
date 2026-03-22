@@ -1159,6 +1159,22 @@ export default function App() {
     return () => clearTimeout(timer);
   }, [xp, level, streak, totalPomosEver, totalTasksDone]);
 
+  // Auto-schedule task to calendar when time & date is set to today
+  useEffect(() => {
+    const today = new Date().toISOString().split("T")[0];
+    const tasksDueToday = tasks.filter(t => t.dueDate === today && t.dueTime && !t.done);
+    tasksDueToday.forEach(t => {
+      const exists = timeBlocks.some(b => b.taskId === t.id && b.date === today);
+      if (!exists) {
+        const [hh, mm] = t.dueTime.split(":").map(Number);
+        const startHour = hh + (mm / 60);
+        const color = pColors[t.priority] || "#5B8DEF";
+        createTimeBlockFromTask({ taskId: t.id, title: t.title, color, startHour });
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tasks, timeBlocks, pColors]);
+
   // ═══════════════════════════════════════
   //  BREADCRUMB
   // ═══════════════════════════════════════
