@@ -494,13 +494,7 @@ export default function App() {
   // Show toast
   const flash = (msg) => { setToast({ msg, visible: true }); setTimeout(() => setToast(t => ({ ...t, visible: false })), 2200); };
 
-  // Auto-collapse sidebar on iPad mini width range (601-820px)
-  useEffect(() => {
-    const w = window.innerWidth;
-    if (w >= 601 && w <= 820) {
-      setCollapsed(true);
-    }
-  }, []);
+  // Sidebar is hidden on tablets via CSS (hamburger menu used instead)
 
   // Timer
   useEffect(() => {
@@ -562,11 +556,16 @@ export default function App() {
     }
   };
 
-  const deleteTask = (id) => {
+  const deleteTask = async (id) => {
     const task = tasks.find(t => t.id === id);
     setTasks(ts => ts.filter(t => t.id !== id));
     // Remove from DB
-    supabase.from("tasks").delete().eq("id", id);
+    const { error } = await supabase.from("tasks").delete().eq("id", id);
+    if (error) {
+      console.error("Failed to delete task from DB:", error);
+      flash("Delete failed — please try again.");
+      return;
+    }
     // Delete from Apple if linked
     if (task?.caldav_href) {
       supabase.functions.invoke("caldav-item", {
@@ -576,20 +575,21 @@ export default function App() {
     flash("Task deleted.");
   };
 
-  const saveEditTask = () => {
+  const saveEditTask = async () => {
     if (!editingTask) return;
     setTasks(ts => ts.map(t => t.id === editingTask.id ? {
       ...t, title: editingTask.title, desc: editingTask.desc,
       description: editingTask.desc, priority: editingTask.priority,
       dueDate: editingTask.dueDate, dueTime: editingTask.dueTime,
     } : t));
-    supabase.from("tasks").update({
+    const { error } = await supabase.from("tasks").update({
       title: editingTask.title, description: editingTask.desc,
       priority: editingTask.priority, due_date: editingTask.dueDate || null,
       due_time: editingTask.dueTime || null,
     }).eq("id", editingTask.id);
+    if (error) console.error("Failed to update task:", error);
     setEditingTask(null);
-    flash("Task updated!");
+    flash(error ? "Update failed — please try again." : "Task updated!");
   };
 
   const toggleSubtask = (taskId, subId) => {
@@ -1735,31 +1735,23 @@ export default function App() {
 
   const loadFromSupabase = async () => {
     const { data: dbBlocks } = await supabase.from("time_blocks").select("*").eq("user_id", (await supabase.auth.getUser()).data.user.id);
-    if (dbBlocks?.length) {
-      setTimeBlocks(prev => {
-        const existingIds = new Set(prev.map(b => b.id));
-        const newBlocks = dbBlocks.filter(b => !existingIds.has(b.id)).map(b => ({
-          id: b.id, title: b.title, startHour: b.start_hour, endHour: b.end_hour,
-          taskId: null, color: b.color || "#5B8DEF", type: b.type || "work",
-          date: b.block_date, externalId: b.external_id,
-        }));
-        return [...prev, ...newBlocks];
-      });
+    if (dbBlocks) {
+      setTimeBlocks(dbBlocks.map(b => ({
+        id: b.id, title: b.title, startHour: b.start_hour, endHour: b.end_hour,
+        taskId: null, color: b.color || "#5B8DEF", type: b.type || "work",
+        date: b.block_date, externalId: b.external_id,
+      })));
     }
     const { data: dbTasks } = await supabase.from("tasks").select("*").eq("user_id", (await supabase.auth.getUser()).data.user.id);
-    if (dbTasks?.length) {
-      setTasks(prev => {
-        const existingIds = new Set(prev.map(t => t.id));
-        const newTasks = dbTasks.filter(t => !existingIds.has(t.id)).map(t => ({
-          id: t.id, title: t.title, desc: t.description || "",
-          description: t.description || "",
-          priority: t.priority || "medium", done: t.done || false,
-          dueDate: t.due_date, dueTime: t.due_time, section: t.section || "afternoon",
-          externalId: t.external_id, caldav_href: t.caldav_href, caldav_etag: t.caldav_etag,
-          subtasks: [], notes: [], attachments: [], donePomos: 0, totalPomos: 0, wsId: null, tags: [],
-        }));
-        return [...prev, ...newTasks];
-      });
+    if (dbTasks) {
+      setTasks(dbTasks.map(t => ({
+        id: t.id, title: t.title, desc: t.description || "",
+        description: t.description || "",
+        priority: t.priority || "medium", done: t.done || false,
+        dueDate: t.due_date, dueTime: t.due_time, section: t.section || "afternoon",
+        externalId: t.external_id, caldav_href: t.caldav_href, caldav_etag: t.caldav_etag,
+        subtasks: [], notes: [], attachments: [], donePomos: 0, totalPomos: 0, wsId: null, tags: [],
+      })));
     }
   };
 
@@ -3351,6 +3343,10 @@ export default function App() {
 
         /* ── iPad mini portrait (601-820px, 744px CSS width) ── */
         @media(min-width:601px) and (max-width:820px){
+          .mobile-hamburger{display:flex}
+          .sidebar-desktop{display:none!important}
+          .mobile-sidebar-overlay{display:block}
+          .mobile-sidebar-panel{width:320px!important}
           .stats-grid{grid-template-columns:1fr 1fr!important}
           .today-layout{flex-direction:column!important}
           .today-sidebar{width:100%!important;display:grid;grid-template-columns:1fr 1fr;gap:14px}
@@ -3364,13 +3360,17 @@ export default function App() {
 
         /* ── iPad 10th gen portrait (821-1024px, 820px CSS width) ── */
         @media(min-width:821px) and (max-width:1024px){
+          .mobile-hamburger{display:flex}
+          .sidebar-desktop{display:none!important}
+          .mobile-sidebar-overlay{display:block}
+          .mobile-sidebar-panel{width:320px!important}
           .stats-grid{grid-template-columns:1fr 1fr!important}
           .today-sidebar{width:220px!important}
           .notes-grid{grid-template-columns:1fr!important}
         }
 
-        /* ── All phones: safe area for fixed elements ── */
-        @media(max-width:600px){
+        /* ── All phones & tablets: safe area for fixed elements ── */
+        @media(max-width:1024px){
           .toast-container{bottom:calc(24px + env(safe-area-inset-bottom))!important}
           .mobile-topbar{padding-top:env(safe-area-inset-top)!important}
         }
@@ -3388,7 +3388,7 @@ export default function App() {
       {showMobileSidebar && (
         <div className="mobile-sidebar-overlay" style={{ position:"fixed",inset:0,zIndex:50 }}>
           <div onClick={() => setShowMobileSidebar(false)} style={{ position:"absolute",inset:0,background:"var(--overlay-heavy)",backdropFilter:"blur(2px)" }} />
-          <div style={{ position:"relative",width:"min(280px, calc(100vw - 60px))",height:"100%",zIndex:51,paddingTop:"env(safe-area-inset-top)",paddingBottom:"env(safe-area-inset-bottom)" }}>
+          <div className="mobile-sidebar-panel" style={{ position:"relative",width:"min(280px, calc(100vw - 60px))",height:"100%",zIndex:51,paddingTop:"env(safe-area-inset-top)",paddingBottom:"env(safe-area-inset-bottom)" }}>
             {renderSidebar()}
           </div>
         </div>
