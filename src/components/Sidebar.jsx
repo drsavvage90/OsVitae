@@ -1,0 +1,184 @@
+import {
+  Home, Inbox, Calendar, ClipboardList, Timer, Repeat, Flag,
+  Wallet, PenTool, Users, Bookmark,
+  Layout, Library, RefreshCw, Trophy, Settings, Sun, Moon,
+  ArrowLeft, Plus, ChevronDown, Zap,
+} from "lucide-react";
+import { getWsIcon } from "../lib/constants";
+
+export default function Sidebar({
+  collapsed, setCollapsed,
+  page, setPage,
+  themeName, toggleTheme,
+  timerActive, timeLeft, fmt,
+  inbox, ws, tasks,
+  activeWsId, goWs, goToday,
+  sidebarSections, setSidebarSections,
+  setShowNewWs, setShowMobileSidebar, setTimerTaskId,
+}) {
+  return (
+    <div style={{
+      width: collapsed ? 72 : 250, flexShrink: 0, height: "100%",
+      background: "var(--sidebar-bg)", backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)",
+      borderRight: "1px solid var(--sidebar-border)", display: "flex", flexDirection: "column",
+      transition: "width 0.25s ease, background 0.3s ease", overflow: "hidden", zIndex: 10,
+    }}>
+      <div style={{ padding: collapsed ? "20px 20px 16px" : "20px 22px 16px", borderBottom: "1px solid var(--border-light)" }}>
+        <div onClick={goToday} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
+          <div style={{ width: 36, height: 36, borderRadius: 10, background: themeName === "halo" ? "linear-gradient(135deg, #4ADE80, #FFB000)" : "linear-gradient(135deg, #6366F1, #8B5CF6, #A855F7)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Zap size={18} color="#fff" /></div>
+          {!collapsed && <div>
+            <div style={{ fontFamily: "var(--heading)", fontSize: 16, fontWeight: 800, color: "var(--text)", letterSpacing: -0.3 }}>OSVitae</div>
+            <div style={{ fontFamily: "var(--mono)", fontSize: 9, color: "var(--muted)", fontWeight: 500, letterSpacing: 0.5 }}>Personal Suite</div>
+          </div>}
+        </div>
+      </div>
+
+      <div style={{ flex: 1, overflowY: "auto", padding: "6px 0" }}>
+        {/* Home section */}
+        <div style={{ padding: "8px 12px 2px" }}>
+          {!collapsed && <div style={{ fontFamily: "var(--mono)", fontSize: 9, color: "var(--muted)", textTransform: "uppercase", letterSpacing: 2, padding: "0 10px", marginBottom: 8, fontWeight: 600 }}>Home</div>}
+          {[
+            { icon: <Home size={18} />, label: "Today", id: "today" },
+            { icon: <Inbox size={18} />, label: "Inbox", id: "inbox", badge: inbox.filter(i => !i.triaged).length },
+            { icon: <Calendar size={18} />, label: "Calendar", id: "calendar" },
+            { icon: <ClipboardList size={18} />, label: "All Tasks", id: "allTasks" },
+            { icon: <Timer size={18} />, label: "Focus Timer", id: "timer" },
+          ].map(nav => (
+            <div key={nav.id} onClick={() => { setPage(nav.id); if(nav.id==="timer"){ setTimerTaskId(null); } setShowMobileSidebar(false); }} style={{
+              display: "flex", alignItems: "center", gap: 10, padding: collapsed ? "10px 18px" : "9px 14px",
+              borderRadius: 12, cursor: "pointer", marginBottom: 2,
+              background: page === nav.id ? "var(--primary-bg)" : "transparent",
+              color: page === nav.id ? "var(--primary)" : "var(--muted)",
+              fontFamily: "var(--body)", fontSize: 13, fontWeight: page === nav.id ? 700 : 500, transition: "all 0.15s",
+            }}
+              onMouseEnter={e => { if (page !== nav.id) e.currentTarget.style.background = "var(--hover-bg)"; }}
+              onMouseLeave={e => { if (page !== nav.id) e.currentTarget.style.background = page === nav.id ? "var(--primary-bg)" : "transparent"; }}
+            >
+              <span style={{ fontSize: 16 }}>{nav.icon}</span>
+              {!collapsed && nav.label}
+              {!collapsed && nav.id === "timer" && timerActive && (
+                <span style={{ marginLeft: "auto", fontFamily: "var(--mono)", fontSize: 10, color: "var(--primary)", fontWeight: 700 }}>{fmt(timeLeft)}</span>
+              )}
+              {!collapsed && nav.badge > 0 && (
+                <span style={{ marginLeft: "auto", fontFamily: "var(--mono)", fontSize: 9, fontWeight: 700, color: "#fff", background: "var(--danger)", borderRadius: 8, padding: "1px 6px", minWidth: 16, textAlign: "center" }}>{nav.badge}</span>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* Track section */}
+        <div style={{ padding: "8px 12px 2px" }}>
+          {!collapsed && <div onClick={() => setSidebarSections(s => ({ ...s, track: !s.track }))} style={{ fontFamily: "var(--mono)", fontSize: 9, color: "var(--muted)", textTransform: "uppercase", letterSpacing: 2, padding: "0 10px", marginBottom: 8, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between" }}>Track<ChevronDown size={12} style={{ transition: "transform 0.2s", transform: sidebarSections.track ? "none" : "rotate(-90deg)" }} /></div>}
+          {sidebarSections.track && [
+            { icon: <Repeat size={18} />, label: "Habits", id: "habits" },
+            { icon: <Flag size={18} />, label: "Goals", id: "goals" },
+            { icon: <Wallet size={18} />, label: "Finance", id: "finance" },
+          ].map(nav => (
+            <div key={nav.id} onClick={() => { setPage(nav.id); setShowMobileSidebar(false); }} style={{
+              display: "flex", alignItems: "center", gap: 10, padding: collapsed ? "10px 18px" : "9px 14px",
+              borderRadius: 12, cursor: "pointer", marginBottom: 2,
+              background: page === nav.id ? "var(--primary-bg)" : "transparent",
+              color: page === nav.id ? "var(--primary)" : "var(--muted)",
+              fontFamily: "var(--body)", fontSize: 13, fontWeight: page === nav.id ? 700 : 500, transition: "all 0.15s",
+            }}
+              onMouseEnter={e => { if (page !== nav.id) e.currentTarget.style.background = "var(--hover-bg)"; }}
+              onMouseLeave={e => { if (page !== nav.id) e.currentTarget.style.background = page === nav.id ? "var(--primary-bg)" : "transparent"; }}
+            >
+              <span style={{ fontSize: 16 }}>{nav.icon}</span>
+              {!collapsed && nav.label}
+            </div>
+          ))}
+        </div>
+
+        {/* Library section */}
+        <div style={{ padding: "8px 12px 2px" }}>
+          {!collapsed && <div onClick={() => setSidebarSections(s => ({ ...s, library: !s.library }))} style={{ fontFamily: "var(--mono)", fontSize: 9, color: "var(--muted)", textTransform: "uppercase", letterSpacing: 2, padding: "0 10px", marginBottom: 8, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between" }}>Library<ChevronDown size={12} style={{ transition: "transform 0.2s", transform: sidebarSections.library ? "none" : "rotate(-90deg)" }} /></div>}
+          {sidebarSections.library && [
+            { icon: <PenTool size={18} />, label: "Scratchpad", id: "scratchpad" },
+            { icon: <Users size={18} />, label: "Contacts", id: "contacts" },
+            { icon: <Bookmark size={18} />, label: "Bookmarks", id: "bookmarks" },
+            { icon: <Layout size={18} />, label: "Templates", id: "templates" },
+            { icon: <Library size={18} />, label: "Wiki", id: "wiki" },
+            { icon: <RefreshCw size={18} />, label: "Review", id: "review" },
+            { icon: <Trophy size={18} />, label: "Rewards", id: "rewards" },
+          ].map(nav => (
+            <div key={nav.id} onClick={() => { setPage(nav.id); setShowMobileSidebar(false); }} style={{
+              display: "flex", alignItems: "center", gap: 10, padding: collapsed ? "10px 18px" : "9px 14px",
+              borderRadius: 12, cursor: "pointer", marginBottom: 2,
+              background: page === nav.id ? "var(--primary-bg)" : "transparent",
+              color: page === nav.id ? "var(--primary)" : "var(--muted)",
+              fontFamily: "var(--body)", fontSize: 13, fontWeight: page === nav.id ? 700 : 500, transition: "all 0.15s",
+            }}
+              onMouseEnter={e => { if (page !== nav.id) e.currentTarget.style.background = "var(--hover-bg)"; }}
+              onMouseLeave={e => { if (page !== nav.id) e.currentTarget.style.background = page === nav.id ? "var(--primary-bg)" : "transparent"; }}
+            >
+              <span style={{ fontSize: 16 }}>{nav.icon}</span>
+              {!collapsed && nav.label}
+            </div>
+          ))}
+        </div>
+
+        {/* Workspaces */}
+        <div style={{ padding: "8px 12px 2px" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 10px", marginBottom: 8 }}>
+            {!collapsed && <div onClick={() => setSidebarSections(s => ({ ...s, workspaces: !s.workspaces }))} style={{ fontFamily: "var(--mono)", fontSize: 9, color: "var(--muted)", textTransform: "uppercase", letterSpacing: 2, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 4, flex: 1 }}>Workspaces<ChevronDown size={12} style={{ transition: "transform 0.2s", transform: sidebarSections.workspaces ? "none" : "rotate(-90deg)" }} /></div>}
+            {!collapsed && sidebarSections.workspaces && <div onClick={() => setShowNewWs(true)} style={{ width: 20, height: 20, borderRadius: 6, background: "var(--subtle-bg)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--muted)", cursor: "pointer" }}><Plus size={13} /></div>}
+          </div>
+          {sidebarSections.workspaces && ws.map(w => (
+            <div key={w.id} onClick={() => goWs(w.id)} style={{
+              display: "flex", alignItems: "center", gap: 10, padding: collapsed ? "9px 18px" : "9px 14px",
+              borderRadius: 12, cursor: "pointer", marginBottom: 2,
+              background: page === "workspace" && activeWsId === w.id ? `${w.color}12` : "transparent",
+              transition: "all 0.15s",
+            }}
+              onMouseEnter={e => e.currentTarget.style.background = page === "workspace" && activeWsId === w.id ? `${w.color}18` : "var(--hover-bg)"}
+              onMouseLeave={e => e.currentTarget.style.background = page === "workspace" && activeWsId === w.id ? `${w.color}12` : "transparent"}
+            >
+              <div style={{ width: 28, height: 28, borderRadius: 9, flexShrink: 0, background: `${w.color}18`, display: "flex", alignItems: "center", justifyContent: "center", color: w.color }}>{getWsIcon(w.icon, 14)}</div>
+              {!collapsed && <>
+                <span style={{ fontFamily: "var(--body)", fontSize: 13, color: "var(--text)", fontWeight: 500, flex: 1 }}>{w.name}</span>
+                <span style={{ fontFamily: "var(--mono)", fontSize: 10, color: "var(--muted)" }}>{tasks.filter(t => t.wsId === w.id).length}</span>
+              </>}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ padding: "10px 12px", borderTop: "1px solid var(--border-light)" }}>
+        <div onClick={() => { setPage("settings"); setShowMobileSidebar(false); }} style={{
+          display: "flex", alignItems: "center", justifyContent: collapsed ? "center" : "flex-start",
+          gap: 10, padding: "8px 14px", borderRadius: 10, cursor: "pointer",
+          color: page === "settings" ? "var(--primary)" : "var(--muted)",
+          background: page === "settings" ? "var(--primary-bg)" : "transparent",
+          fontFamily: "var(--body)", fontSize: 12, fontWeight: page === "settings" ? 700 : 500, marginBottom: 4,
+        }}
+          onMouseEnter={e => { if (page !== "settings") e.currentTarget.style.background = "var(--hover-bg)"; }}
+          onMouseLeave={e => e.currentTarget.style.background = page === "settings" ? "var(--primary-bg)" : "transparent"}
+        >
+          <span style={{ fontSize: 13 }}><Settings size={14} /></span>
+          {!collapsed && "Settings"}
+        </div>
+        <div onClick={toggleTheme} style={{
+          display: "flex", alignItems: "center", justifyContent: collapsed ? "center" : "flex-start",
+          gap: 10, padding: "8px 14px", borderRadius: 10, cursor: "pointer", color: "var(--muted)", fontFamily: "var(--body)", fontSize: 12, marginBottom: 4,
+        }}
+          onMouseEnter={e => e.currentTarget.style.background = "var(--hover-bg)"}
+          onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+        >
+          <span style={{ fontSize: 13 }}>{themeName === "halo" ? <Sun size={14} /> : <Moon size={14} />}</span>
+          {!collapsed && (themeName === "halo" ? "Default Theme" : "Halo Theme")}
+        </div>
+        <div onClick={() => setCollapsed(!collapsed)} style={{
+          display: "flex", alignItems: "center", justifyContent: collapsed ? "center" : "flex-start",
+          gap: 10, padding: "8px 14px", borderRadius: 10, cursor: "pointer", color: "var(--muted)", fontFamily: "var(--body)", fontSize: 12,
+        }}
+          onMouseEnter={e => e.currentTarget.style.background = "var(--hover-bg)"}
+          onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+        >
+          <span style={{ fontSize: 13, transition: "transform 0.3s", transform: collapsed ? "rotate(180deg)" : "none" }}><ArrowLeft size={14} /></span>
+          {!collapsed && "Collapse"}
+        </div>
+      </div>
+    </div>
+  );
+}
