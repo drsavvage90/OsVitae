@@ -117,7 +117,8 @@ function TodayCalendar({ timeBlocks, tasks, ws, projects, updateTimeBlock, setSh
                 let startHour = snapHour(FIRST_HOUR + y / HOUR_HEIGHT);
                 startHour = clampHour(startHour, FIRST_HOUR, LAST_HOUR - 1);
                 
-                const existing = timeBlocks.find(b => b.taskId === data.taskId);
+                const todayDate = new Date().toISOString().split("T")[0];
+                const existing = timeBlocks.find(b => b.taskId === data.taskId && b.date === todayDate);
                 if (existing) {
                   const duration = existing.endHour - existing.startHour;
                   updateTimeBlock(existing.id, { startHour, endHour: startHour + duration });
@@ -153,7 +154,7 @@ function TodayCalendar({ timeBlocks, tasks, ws, projects, updateTimeBlock, setSh
               </div>
             )}
 
-            {timeBlocks.map(block => {
+            {timeBlocks.filter(b => b.date === new Date().toISOString().split("T")[0]).map(block => {
               const isDragging = drag && drag.blockId === block.id;
               const startHour = isDragging ? preview.startHour : block.startHour;
               const endHour = isDragging ? preview.endHour : block.endHour;

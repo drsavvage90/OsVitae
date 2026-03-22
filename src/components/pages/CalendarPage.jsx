@@ -150,7 +150,7 @@ export default function CalendarPage({
               </div>
             </div>
           ))}
-          {timeBlocks.map(block => {
+          {timeBlocks.filter(b => b.date === new Date().toISOString().split("T")[0]).map(block => {
             const isDragging = drag && drag.blockId === block.id;
             const startHour = isDragging ? preview.startHour : block.startHour;
             const endHour = isDragging ? preview.endHour : block.endHour;
