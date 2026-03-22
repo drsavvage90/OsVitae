@@ -299,6 +299,7 @@ export default function App() {
   const [page, setPage] = useState("today");
   const [activeWsId, setActiveWsId] = useState("cs301");
   const [activeTaskId, setActiveTaskId] = useState(null);
+  const [editingTask, setEditingTask] = useState(null);
   const [wsTab, setWsTab] = useState("Tasks");
   const [collapsed, setCollapsed] = useState(false);
   const [themeName, setThemeName] = useState(() => localStorage.getItem("osvitae-theme") || "default");
@@ -573,6 +574,22 @@ export default function App() {
       }).catch(() => {});
     }
     flash("Task deleted.");
+  };
+
+  const saveEditTask = () => {
+    if (!editingTask) return;
+    setTasks(ts => ts.map(t => t.id === editingTask.id ? {
+      ...t, title: editingTask.title, desc: editingTask.desc,
+      description: editingTask.desc, priority: editingTask.priority,
+      dueDate: editingTask.dueDate, dueTime: editingTask.dueTime,
+    } : t));
+    supabase.from("tasks").update({
+      title: editingTask.title, description: editingTask.desc,
+      priority: editingTask.priority, due_date: editingTask.dueDate || null,
+      due_time: editingTask.dueTime || null,
+    }).eq("id", editingTask.id);
+    setEditingTask(null);
+    flash("Task updated!");
   };
 
   const toggleSubtask = (taskId, subId) => {
@@ -1148,6 +1165,10 @@ export default function App() {
           </div>
         </div>
         <Btn primary color={w?.color} small onClick={e => { e.stopPropagation(); startFocus(task.id); }}>Focus</Btn>
+        <div onClick={e => { e.stopPropagation(); if (confirm("Delete this task?")) deleteTask(task.id); }} style={{ cursor:"pointer",color:"var(--muted)",padding:4,borderRadius:6,display:"flex",alignItems:"center" }}
+          onMouseEnter={e => e.currentTarget.style.color="#EF4444"}
+          onMouseLeave={e => e.currentTarget.style.color="var(--muted)"}
+        ><Trash2 size={14} /></div>
       </div>
     );
   };
@@ -1423,9 +1444,11 @@ export default function App() {
         <h1 style={{ fontFamily:"var(--heading)",fontSize:26,color:"var(--text)",margin:"0 0 6px",fontWeight:800,letterSpacing:-0.5 }}>{activeTask.title}</h1>
         <p style={{ fontFamily:"var(--body)",fontSize:14,color:"var(--muted)",lineHeight:1.6,margin:"0 0 20px" }}>{activeTask.desc}</p>
 
-        <div style={{ display:"flex",gap:10,marginBottom:24 }}>
+        <div style={{ display:"flex",gap:10,marginBottom:24,flexWrap:"wrap" }}>
           <Btn primary color={w?.color} onClick={() => startFocus(activeTask.id)}>Start Focus Session</Btn>
           <Btn onClick={() => toggleTask(activeTask.id)}>{activeTask.done ? "Mark Incomplete" : "Mark Complete"}</Btn>
+          <Btn onClick={() => setEditingTask({ ...activeTask })}><Pencil size={14} style={{ marginRight:4 }} /> Edit</Btn>
+          <Btn onClick={() => { if (confirm("Delete this task?")) { deleteTask(activeTask.id); setPage("allTasks"); } }} style={{ color:"#EF4444" }}><Trash2 size={14} style={{ marginRight:4 }} /> Delete</Btn>
         </div>
 
         <Glass style={{ padding:18,marginBottom:16,display:"flex",alignItems:"center",gap:14 }}>
@@ -3469,6 +3492,47 @@ export default function App() {
           <Btn onClick={() => setShowNewTask(false)}>Cancel</Btn>
           <Btn primary onClick={createTask}>Create Task</Btn>
         </div>
+      </Modal>
+
+      <Modal open={!!editingTask} onClose={() => setEditingTask(null)} title="Edit Task">
+        {editingTask && (<>
+        <div style={{ marginBottom:14 }}>
+          <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>Title</label>
+          <input value={editingTask.title} onChange={e => setEditingTask({ ...editingTask, title: e.target.value })} style={inputStyle} autoFocus />
+        </div>
+        <div style={{ marginBottom:14 }}>
+          <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>Description</label>
+          <textarea value={editingTask.desc || ""} onChange={e => setEditingTask({ ...editingTask, desc: e.target.value })} style={{ ...inputStyle, minHeight:70, resize:"vertical" }} />
+        </div>
+        <div style={{ marginBottom:14 }}>
+          <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>Priority</label>
+          <div style={{ display:"flex",gap:6 }}>
+            {["low","medium","high"].map(p => (
+              <div key={p} onClick={() => setEditingTask({ ...editingTask, priority: p })} style={{
+                flex:1,padding:"8px 0",textAlign:"center",borderRadius:10,cursor:"pointer",
+                background: editingTask.priority === p ? `${pColors[p]}18` : "var(--hover-bg)",
+                border: editingTask.priority === p ? `2px solid ${pColors[p]}` : "2px solid transparent",
+                fontFamily:"var(--body)",fontSize:12,fontWeight:600,color:editingTask.priority===p?pColors[p]:"var(--muted)",
+                textTransform:"capitalize",transition:"all 0.15s",
+              }}>{p}</div>
+            ))}
+          </div>
+        </div>
+        <div style={{ display:"flex",gap:14,marginBottom:20 }}>
+          <div style={{ flex:1 }}>
+            <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>Due Date</label>
+            <input type="date" value={editingTask.dueDate || ""} onChange={e => setEditingTask({ ...editingTask, dueDate: e.target.value })} style={inputStyle} />
+          </div>
+          <div style={{ flex:1 }}>
+            <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>Due Time</label>
+            <input type="time" value={editingTask.dueTime || ""} onChange={e => setEditingTask({ ...editingTask, dueTime: e.target.value })} style={inputStyle} />
+          </div>
+        </div>
+        <div style={{ display:"flex",justifyContent:"flex-end",gap:10 }}>
+          <Btn onClick={() => setEditingTask(null)}>Cancel</Btn>
+          <Btn primary onClick={saveEditTask}>Save Changes</Btn>
+        </div>
+        </>)}
       </Modal>
 
       <Modal open={showNewNote} onClose={() => setShowNewNote(false)} title="Add Note">
