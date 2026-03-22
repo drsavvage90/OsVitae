@@ -734,15 +734,17 @@ export default function App() {
       }}
         onMouseEnter={e => { if(!task.done){ e.currentTarget.style.borderColor="var(--border-hover)"; e.currentTarget.style.boxShadow="var(--hover-shadow)"; }}}
         onMouseLeave={e => { e.currentTarget.style.borderColor="var(--card-border)"; e.currentTarget.style.boxShadow="var(--card-shadow-sm)"; }}
-        onClick={() => goTask(task.id)}
+        onClick={() => { if (TaskRow._didDrag) { TaskRow._didDrag = false; return; } goTask(task.id); }}
         draggable={true}
         onDragStart={(e) => {
+          TaskRow._didDrag = true;
           e.dataTransfer.setData("application/json", JSON.stringify({
             taskId: task.id,
             title: task.title,
             color: w?.color || proj?.color || pColors[task.priority] || "#5B8DEF"
           }));
         }}
+        onDragEnd={() => { setTimeout(() => { TaskRow._didDrag = false; }, 0); }}
       >
         <div onClick={e => { e.stopPropagation(); toggleTask(task.id); }} style={{
           width:20,height:20,borderRadius:6,flexShrink:0,
