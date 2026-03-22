@@ -47,7 +47,6 @@ export default function App() {
   const [page, setPage] = useState("today");
   const [activeWsId, setActiveWsId] = useState(null);
   const [activeTaskId, setActiveTaskId] = useState(null);
-  const dragStartTimeRef = useRef(0);
   const [editingTask, setEditingTask] = useState(null);
   const [wsTab, setWsTab] = useState("Projects");
   const [collapsed, setCollapsed] = useState(false);
@@ -719,6 +718,7 @@ export default function App() {
   };
 
   // ─── TASK ROW (reused in today & workspace & allTasks) ───
+  const mouseDownPos = useRef(null);
   const TaskRow = ({ task, idx, showWs = true, showProject = true }) => {
     const w = ws.find(x => x.id === task.wsId);
     const proj = projects.find(p => p.id === task.projectId);
@@ -733,10 +733,19 @@ export default function App() {
       }}
         onMouseEnter={e => { if(!task.done){ e.currentTarget.style.borderColor="var(--border-hover)"; e.currentTarget.style.boxShadow="var(--hover-shadow)"; }}}
         onMouseLeave={e => { e.currentTarget.style.borderColor="var(--card-border)"; e.currentTarget.style.boxShadow="var(--card-shadow-sm)"; }}
-        onClick={() => { if (Date.now() - dragStartTimeRef.current < 800) return; goTask(task.id); }}
+        onMouseDown={(e) => { mouseDownPos.current = { x: e.clientX, y: e.clientY }; }}
+        onClick={(e) => {
+          if (mouseDownPos.current) {
+            const dx = Math.abs(e.clientX - mouseDownPos.current.x);
+            const dy = Math.abs(e.clientY - mouseDownPos.current.y);
+            if (dx > 5 || dy > 5) { mouseDownPos.current = null; return; }
+          }
+          mouseDownPos.current = null;
+          goTask(task.id);
+        }}
         draggable={true}
         onDragStart={(e) => {
-          dragStartTimeRef.current = Date.now();
+          mouseDownPos.current = { x: -9999, y: -9999 }; // force click suppression
           e.dataTransfer.setData("application/json", JSON.stringify({
             taskId: task.id,
             title: task.title,
