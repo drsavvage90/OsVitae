@@ -919,7 +919,7 @@ export default function App() {
   const activeWiki = wiki.find(a => a.id === activeWikiId);
 
   const filteredTasks = searchQuery
-    ? tasks.filter(t => t.title.toLowerCase().includes(searchQuery.toLowerCase()) || t.desc.toLowerCase().includes(searchQuery.toLowerCase()))
+    ? tasks.filter(t => t.title.toLowerCase().includes(searchQuery.toLowerCase()) || (t.desc || "").toLowerCase().includes(searchQuery.toLowerCase()))
     : tasks;
 
   // Navigate helpers
@@ -1733,7 +1733,7 @@ export default function App() {
           priority: t.priority || "medium", done: t.done || false,
           dueDate: t.due_date, dueTime: t.due_time, section: t.section || "afternoon",
           externalId: t.external_id, caldav_href: t.caldav_href, caldav_etag: t.caldav_etag,
-          subtasks: [], donePomos: 0, totalPomos: 0, wsId: null, tags: [],
+          subtasks: [], notes: [], attachments: [], donePomos: 0, totalPomos: 0, wsId: null, tags: [],
         }));
         return [...prev, ...newTasks];
       });
