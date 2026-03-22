@@ -988,7 +988,7 @@ export default function App() {
     if (dbBlocks) {
       setTimeBlocks(dbBlocks.map(b => ({
         id: b.id, title: b.title, startHour: b.start_hour, endHour: b.end_hour,
-        taskId: null, color: b.color || "#5B8DEF", type: b.type || "work",
+        taskId: b.task_id || null, color: b.color || "#5B8DEF", type: b.type || "work",
         date: b.block_date, externalId: b.external_id,
       })));
     }
@@ -1159,21 +1159,28 @@ export default function App() {
     return () => clearTimeout(timer);
   }, [xp, level, streak, totalPomosEver, totalTasksDone]);
 
+  const autoScheduledTasks = useRef(new Set());
   // Auto-schedule task to calendar when time & date is set to today
   useEffect(() => {
     const today = new Date().toISOString().split("T")[0];
     const tasksDueToday = tasks.filter(t => t.dueDate === today && t.dueTime && !t.done);
     tasksDueToday.forEach(t => {
+      const scheduleKey = `${t.id}-${t.dueTime}`;
+      if (autoScheduledTasks.current.has(scheduleKey)) return;
+      
       const exists = timeBlocks.some(b => b.taskId === t.id && b.date === today);
       if (!exists) {
+        autoScheduledTasks.current.add(scheduleKey);
         const [hh, mm] = t.dueTime.split(":").map(Number);
         const startHour = hh + (mm / 60);
         const color = pColors[t.priority] || "#5B8DEF";
         createTimeBlockFromTask({ taskId: t.id, title: t.title, color, startHour });
+      } else {
+        autoScheduledTasks.current.add(scheduleKey);
       }
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tasks, timeBlocks, pColors]);
+  }, [tasks]);
 
   // ═══════════════════════════════════════
   //  BREADCRUMB
