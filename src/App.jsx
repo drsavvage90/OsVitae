@@ -1011,12 +1011,14 @@ export default function App() {
           }
         }
         setTimeBlocks(keep);
-        // Clean up duplicates from database in background
+        // Clean up duplicates from database in background with a single mass-delete
         if (dupeIds.length > 0) {
           logger.info(`Cleaning up ${dupeIds.length} duplicate time blocks`);
-          for (const dupeId of dupeIds) {
-            supabase.from("time_blocks").delete().eq("id", dupeId).then(({ error }) => {
-              if (error) logger.error("Failed to delete duplicate block:", error);
+          // Delete in batches of 100 to avoid query size limits just in case
+          for (let i = 0; i < dupeIds.length; i += 100) {
+            const batch = dupeIds.slice(i, i + 100);
+            supabase.from("time_blocks").delete().in("id", batch).then(({ error }) => {
+              if (error) logger.error("Failed to delete duplicate blocks:", error);
             });
           }
         }
