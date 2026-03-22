@@ -116,7 +116,14 @@ function TodayCalendar({ timeBlocks, tasks, ws, projects, updateTimeBlock, setSh
                 const y = e.clientY - rect.top + gridRef.current.scrollTop;
                 let startHour = snapHour(FIRST_HOUR + y / HOUR_HEIGHT);
                 startHour = clampHour(startHour, FIRST_HOUR, LAST_HOUR - 1);
-                createTimeBlockFromTask({ ...data, startHour });
+                
+                const existing = timeBlocks.find(b => b.taskId === data.taskId);
+                if (existing) {
+                  const duration = existing.endHour - existing.startHour;
+                  updateTimeBlock(existing.id, { startHour, endHour: startHour + duration });
+                } else {
+                  createTimeBlockFromTask({ ...data, startHour });
+                }
               }
             } catch(err) {}
           }}
