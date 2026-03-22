@@ -24,7 +24,9 @@ function formatTime(h) {
   return `${hr}:${min}`;
 }
 
-export default function CalendarPage({ timeBlocks, setShowNewBlock, deleteTimeBlock, setEditingBlock, goTask, updateTimeBlock }) {
+export default function CalendarPage({
+  timeBlocks, tasks, ws, projects, updateTimeBlock, setShowNewBlock, deleteTimeBlock, setEditingBlock, goTask
+}) {
   const hours = Array.from({ length: LAST_HOUR - FIRST_HOUR }, (_, i) => i + FIRST_HOUR);
   const gridRef = useRef(null);
 
@@ -152,8 +154,14 @@ export default function CalendarPage({ timeBlocks, setShowNewBlock, deleteTimeBl
             const isDragging = drag && drag.blockId === block.id;
             const startHour = isDragging ? preview.startHour : block.startHour;
             const endHour = isDragging ? preview.endHour : block.endHour;
+            const logicalHeight = (endHour - startHour) * HOUR_HEIGHT;
+            const height = Math.max(logicalHeight, 46);
             const top = (startHour - FIRST_HOUR) * HOUR_HEIGHT;
-            const height = (endHour - startHour) * HOUR_HEIGHT;
+            
+            const task = block.taskId ? tasks?.find(t => t.id === block.taskId) : null;
+            const w = task && ws ? ws.find(x => x.id === task.wsId) : null;
+            const proj = task && projects ? projects.find(p => p.id === task.projectId) : null;
+            const subtitle = [w?.name, proj?.name].filter(Boolean).join(" • ");
 
             return (
               <div
@@ -192,11 +200,18 @@ export default function CalendarPage({ timeBlocks, setShowNewBlock, deleteTimeBl
                   <GripVertical size={10} color="var(--muted)" />
                 </div>
 
-                <div style={{ fontFamily:"var(--heading)",fontSize:13,fontWeight:700,color:block.color }}>
-                  {block.title}
-                </div>
-                <div style={{ fontFamily:"var(--mono)",fontSize:10,color:"var(--muted)",marginTop:2 }}>
-                  {formatTime(startHour)} – {formatTime(endHour)}
+                <div style={{ flex:1, display:"flex", flexDirection:"column", justifyContent:"center" }}>
+                  <div style={{ fontFamily:"var(--heading)",fontSize:13,fontWeight:700,color:block.color,overflow:"hidden",textOverflow:"ellipsis",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical" }}>
+                    {block.title}
+                  </div>
+                  {subtitle && (
+                    <div style={{ fontFamily:"var(--body)",fontSize:11,color:"var(--text)",opacity:0.8,marginTop:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>
+                      {subtitle}
+                    </div>
+                  )}
+                  <div style={{ fontFamily:"var(--mono)",fontSize:10,color:"var(--muted)",marginTop:2 }}>
+                    {formatTime(startHour)} – {formatTime(endHour)}
+                  </div>
                 </div>
                 {block.type !== "work" && (
                   <span style={{ fontFamily:"var(--mono)",fontSize:9,color:block.color,fontWeight:600,textTransform:"uppercase" }}>

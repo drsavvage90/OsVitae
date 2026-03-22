@@ -21,7 +21,7 @@ function formatTime(h) {
   return `${hr}:${min}`;
 }
 
-function TodayCalendar({ timeBlocks, updateTimeBlock, setShowNewBlock, deleteTimeBlock, setEditingBlock, goTask, createTimeBlockFromTask }) {
+function TodayCalendar({ timeBlocks, tasks, ws, projects, updateTimeBlock, setShowNewBlock, deleteTimeBlock, setEditingBlock, goTask, createTimeBlockFromTask }) {
   const hours = Array.from({ length: LAST_HOUR - FIRST_HOUR }, (_, i) => i + FIRST_HOUR);
   const gridRef = useRef(null);
   const [drag, setDrag] = useState(null);
@@ -150,8 +150,14 @@ function TodayCalendar({ timeBlocks, updateTimeBlock, setShowNewBlock, deleteTim
               const isDragging = drag && drag.blockId === block.id;
               const startHour = isDragging ? preview.startHour : block.startHour;
               const endHour = isDragging ? preview.endHour : block.endHour;
+              const logicalHeight = (endHour - startHour) * HOUR_HEIGHT;
+              const height = Math.max(logicalHeight, 38);
               const top = (startHour - FIRST_HOUR) * HOUR_HEIGHT;
-              const height = (endHour - startHour) * HOUR_HEIGHT;
+              
+              const task = block.taskId ? tasks?.find(t => t.id === block.taskId) : null;
+              const w = task && ws ? ws.find(x => x.id === task.wsId) : null;
+              const proj = task && projects ? projects.find(p => p.id === task.projectId) : null;
+              const subtitle = [w?.name, proj?.name].filter(Boolean).join(" • ");
 
               return (
                 <div
@@ -172,8 +178,15 @@ function TodayCalendar({ timeBlocks, updateTimeBlock, setShowNewBlock, deleteTim
                   onClick={() => { if (!drag && block.taskId) goTask(block.taskId); }}
                 >
                   <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between" }}>
-                    <div style={{ fontFamily:"var(--heading)",fontSize:11,fontWeight:700,color:block.color,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",flex:1 }}>
-                      {block.title}
+                    <div style={{ display:"flex",flexDirection:"column",flex:1,minWidth:0 }}>
+                      <div style={{ fontFamily:"var(--heading)",fontSize:11,fontWeight:700,color:block.color,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>
+                        {block.title}
+                      </div>
+                      {subtitle && (
+                        <div style={{ fontFamily:"var(--mono)",fontSize:9,color:"var(--text)",opacity:0.8,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",marginTop:2 }}>
+                          {subtitle}
+                        </div>
+                      )}
                     </div>
                     <div style={{ display:"flex",gap:2,flexShrink:0,marginLeft:4 }}>
                       <div data-action="edit" role="button" onClick={(e) => { e.stopPropagation(); setEditingBlock(block); }} style={{ width:24,height:24,borderRadius:6,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",color:"var(--muted)",opacity:0.6,transition:"all 0.15s" }}
@@ -186,7 +199,7 @@ function TodayCalendar({ timeBlocks, updateTimeBlock, setShowNewBlock, deleteTim
                       ><X size={12}/></div>
                     </div>
                   </div>
-                  <div style={{ fontFamily:"var(--mono)",fontSize:9,color:"var(--muted)",marginTop:1 }}>
+                  <div style={{ fontFamily:"var(--mono)",fontSize:9,color:"var(--muted)",marginTop:2 }}>
                     {formatTime(startHour)} – {formatTime(endHour)}
                   </div>
                   {/* Resize handle */}
@@ -207,11 +220,8 @@ function TodayCalendar({ timeBlocks, updateTimeBlock, setShowNewBlock, deleteTim
 }
 
 export default function TodayPage({
-  greeting, totalTasks, doneTasks, totalPomos, donePomos,
-  habits, toggleHabit, streak, themeName,
-  timerActive, timeLeft, fmt, setTimerTaskId, setPage,
-  tasks, goTask, TaskRow,
-  inbox,
+  greeting, totalTasks, doneTasks, totalPomos, donePomos, habits, toggleHabit, streak, themeName,
+  timerActive, timeLeft, fmt, setTimerTaskId, setPage, tasks, ws, projects, goTask, TaskRow, inbox,
   intentionText, setIntentionText, editingIntention, setEditingIntention,
   setNewTaskWs, setShowNewTask, flash, inputStyle,
   timeBlocks, updateTimeBlock, setShowNewBlock, deleteTimeBlock, setEditingBlock,
@@ -285,6 +295,9 @@ export default function TodayPage({
         <div style={{ flex:1,minWidth:0 }}>
           <TodayCalendar
             timeBlocks={timeBlocks}
+            tasks={tasks}
+            ws={ws}
+            projects={projects}
             updateTimeBlock={updateTimeBlock}
             setShowNewBlock={setShowNewBlock}
             deleteTimeBlock={deleteTimeBlock}
