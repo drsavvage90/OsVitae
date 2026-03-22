@@ -1665,12 +1665,17 @@ export default function App() {
   };
 
   const rediscoverCalendars = async () => {
-    const { data } = await supabase.functions.invoke("caldav-discover", {
-      body: {},
-    });
-    if (data) {
+    setSyncError(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("caldav-discover", {
+        body: {},
+      });
+      if (error) throw new Error(error.message);
+      if (data?.error) throw new Error(data.error);
       setAppleCalendars(data.calendars || []);
       setAppleReminderLists(data.reminderLists || []);
+    } catch (e) {
+      setSyncError("Load calendars failed: " + e.message);
     }
   };
 
@@ -3324,7 +3329,7 @@ export default function App() {
           display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 16px",gap:10,
           background:"var(--card-bg)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",borderBottom:"1px solid var(--border-light)",transition:"background 0.3s ease",flexShrink:0,
         }}>
-          <div className="mobile-hamburger" onClick={() => setShowMobileSidebar(true)} style={{ width:36,height:36,borderRadius:10,background:"var(--subtle-bg)",alignItems:"center",justifyContent:"center",cursor:"pointer",flexShrink:0 }}><Menu size={18} /></div>
+          <div className="mobile-hamburger" onClick={() => { setSidebarSections({ home: true, track: true, library: true, workspaces: true }); setShowMobileSidebar(true); }} style={{ width:36,height:36,borderRadius:10,background:"var(--subtle-bg)",alignItems:"center",justifyContent:"center",cursor:"pointer",flexShrink:0 }}><Menu size={18} /></div>
           <span className="topbar-breadcrumb" style={{ fontFamily:"var(--body)",fontSize:13,color:"var(--muted)" }}>{breadcrumb()}</span>
           <div style={{ display:"flex",alignItems:"center",gap:10,flex:1,justifyContent:"flex-end" }}>
             <div className="topbar-search" onClick={() => setShowSearch(true)} style={{ background:"var(--subtle-bg)",borderRadius:10,padding:"7px 14px",fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",display:"flex",alignItems:"center",gap:6,cursor:"pointer",border:"1px solid var(--subtle-bg)" }}><Search size={14} /> Search...</div>
