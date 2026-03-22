@@ -1,0 +1,39 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//Users/sethnordgren/Projects/proworkspace-ai/**)",
+      "Bash(ls -la /Users/sethnordgren/Projects/proworkspace-ai/src/app/api/organizations/[orgId]/)",
+      "Bash(ls -la /Users/sethnordgren/Projects/proworkspace-ai/src/app/api/organizations/[orgId]/members/)",
+      "Bash(ls -la /Users/sethnordgren/Projects/proworkspace-ai/src/app/api/organizations/[orgId]/members/[userId]/)",
+      "Bash(ls -la /Users/sethnordgren/Projects/proworkspace-ai/src/app/api/organizations/[orgId]/members/[userId]/workspaces/)",
+      "Bash(grep -l \"project\" /Users/sethnordgren/Projects/OSVitae/supabase/migrations/*.sql)",
+      "Bash(find /Users/sethnordgren/Projects/OSVitae -type f -name .env*)",
+      "Bash(find /Users/sethnordgren/Projects/OSVitae -not -path */node_modules/* -not -path */dist/* -not -path */.git/* -not -path */.claude/* -type d)",
+      "Bash(find /Users/sethnordgren/Projects/OSVitae -name .env* -type f)",
+      "Bash(xargs git:*)",
+      "Bash(find /Users/sethnordgren/Projects/OSVitae -maxdepth 2 -type f \\\\\\(-name vite.config.* -o -name index.html -o -name package.json \\\\\\))",
+      "Bash(grep -r \"XMLHttpRequest\\\\|WebSocket\\\\|fetch\\\\|axios\" /Users/sethnordgren/Projects/OSVitae/src --include=*.js --include=*.jsx)",
+      "Bash(find /Users/sethnordgren/Projects/OSVitae -maxdepth 2 -name .env* -o -name *.config.* -o -name tsconfig.* -o -name jsconfig.*)",
+      "Bash(git -C /Users/sethnordgren/Projects/OSVitae log --all -p --source -S \"supabase_anon_key\\\\|VITE_SUPABASE\\\\|api_key\\\\|api-key\")",
+      "Bash(grep -r \"\\\\.select\\\\|\\\\.rpc\\\\|\\\\.invoke\" /Users/sethnordgren/Projects/OSVitae/src --include=*.jsx --include=*.js)",
+      "Bash(grep -r \"new RegExp\\\\|constructor\\\\|prototype\" /Users/sethnordgren/Projects/OSVitae/src --include=*.js --include=*.jsx)",
+      "Bash(grep -A 5 \"CREATE POLICY.*transactions\\\\|CREATE POLICY.*budgets\\\\|CREATE POLICY.*bills\\\\|CREATE POLICY.*apple_credentials\" /Users/sethnordgren/Projects/OSVitae/supabase/migrations/*.sql)",
+      "Bash(grep -r \"app_password\\\\|apple_id\\\\|credential\\\\|encrypt\\\\|decrypt\" /Users/sethnordgren/Projects/OSVitae/src --include=*.js --include=*.jsx)",
+      "Bash(grep -rn \"service.*worker\\\\|sw\\\\.js\" /Users/sethnordgren/Projects/OSVitae/src --include=*.jsx --include=*.js)",
+      "Bash(grep -r \"WebSocket\\\\|ws://\" /Users/sethnordgren/Projects/OSVitae/src --include=*.js --include=*.jsx)",
+      "Bash(grep -n \"ENABLE ROW LEVEL SECURITY\\\\|CREATE POLICY\" /Users/sethnordgren/Projects/OSVitae/supabase/migrations/*.sql)",
+      "Bash(grep -rn \"crypto.randomUUID\\\\|crypto.getRandomValues\" /Users/sethnordgren/Projects/OSVitae/src --include=*.jsx --include=*.js)",
+      "Bash(grep -rn \"SELECT.*FROM\\\\|INSERT INTO\\\\|UPDATE.*SET\\\\|DELETE FROM\" /Users/sethnordgren/Projects/OSVitae/src --include=*.jsx --include=*.js)",
+      "Bash(find /Users/sethnordgren/Projects/OSVitae -maxdepth 2 -type f \\\\\\(-name README* -o -name PRIVACY* -o -name TERMS* -o -name *.md \\\\\\))",
+      "Bash(find /Users/sethnordgren/Projects/OSVitae/supabase -type f -name *.ts -o -name *.js)",
+      "Bash(git check-ignore:*)",
+      "Bash(grep -c \"ENABLE ROW LEVEL SECURITY\" /Users/sethnordgren/Projects/OSVitae/supabase/migrations/*.sql)",
+      "Bash(ls /Users/sethnordgren/Projects/proworkspace-ai/src/app/api/organizations/[orgId]/members/[userId]/)",
+      "Bash(git log:*)",
+      "Bash(for f:*)",
+      "Bash(do sed:*)",
+      "Bash(curl -s -X POST \"https://gduostuaonehbtregsjy.supabase.co/functions/v1/migrate-encrypt\" -H \"Content-Type: application/json\" -d '{\"\"\"\"admin_secret\"\"\"\":\"\"\"\"f4831e8ed6f81ac7dee003fbd72cd14e262526de1eaa8e6b5b7855c82ffcd827\"\"\"\"}')",
+      "Bash(vercel whoami:*)"
+    ]
+  }
+}

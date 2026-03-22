@@ -582,7 +582,28 @@ export default function App() {
       setTimeBlocks(prev => prev.filter(b => b.id !== id));
       flash("Failed to save time block.");
     } else {
-      syncAll();
+      if (typeof syncAll === "function") syncAll();
+    }
+  };
+
+  const createTimeBlockFromTask = async ({ taskId, title, color, startHour }) => {
+    const id = crypto.randomUUID();
+    const blockDate = new Date().toISOString().split("T")[0];
+    const endHour = startHour + 1;
+    setTimeBlocks(prev => [...prev, { id, title, startHour, endHour, taskId, color: color || "#5B8DEF", type: "work", date: blockDate }]);
+    flash("Task added to calendar!");
+    const userId = await getUserId();
+    if (!userId) return;
+    const { error } = await supabase.from("time_blocks").insert({
+      id, user_id: userId, title, start_hour: startHour,
+      end_hour: endHour, block_date: blockDate, color: color || "#5B8DEF", type: "work", task_id: taskId
+    });
+    if (error) {
+      logger.error("Failed to save time block:", error);
+      setTimeBlocks(prev => prev.filter(b => b.id !== id));
+      flash("Failed to save time block.");
+    } else {
+      if (typeof syncAll === "function") syncAll();
     }
   };
 
@@ -704,6 +725,14 @@ export default function App() {
         onMouseEnter={e => { if(!task.done){ e.currentTarget.style.borderColor="var(--border-hover)"; e.currentTarget.style.boxShadow="var(--hover-shadow)"; }}}
         onMouseLeave={e => { e.currentTarget.style.borderColor="var(--card-border)"; e.currentTarget.style.boxShadow="var(--card-shadow-sm)"; }}
         onClick={() => goTask(task.id)}
+        draggable={true}
+        onDragStart={(e) => {
+          e.dataTransfer.setData("application/json", JSON.stringify({
+            taskId: task.id,
+            title: task.title,
+            color: w?.color || proj?.color || pColors[task.priority] || "#5B8DEF"
+          }));
+        }}
       >
         <div onClick={e => { e.stopPropagation(); toggleTask(task.id); }} style={{
           width:20,height:20,borderRadius:6,flexShrink:0,
@@ -1319,7 +1348,7 @@ export default function App() {
         </div>
 
         <div className="main-content" style={{ flex:1,overflow:"auto",padding: page === "timer" ? "28px 28px" : "24px 28px", minHeight: 0, display:"flex", flexDirection:"column" }}>
-          {page === "today" && <TodayPage greeting={greeting} totalTasks={totalTasks} doneTasks={doneTasks} totalPomos={totalPomos} donePomos={donePomos} habits={habits} toggleHabit={toggleHabit} streak={streak} themeName={themeName} timerActive={timerActive} timeLeft={timeLeft} fmt={fmt} setTimerTaskId={setTimerTaskId} setPage={setPage} tasks={tasks} goTask={goTask} TaskRow={TaskRow} inbox={inbox} intentionText={intentionText} setIntentionText={setIntentionText} editingIntention={editingIntention} setEditingIntention={setEditingIntention} setNewTaskWs={setNewTaskWs} setShowNewTask={setShowNewTask} flash={flash} inputStyle={inputStyle} timeBlocks={timeBlocks} updateTimeBlock={updateTimeBlock} setShowNewBlock={setShowNewBlock} deleteTimeBlock={deleteTimeBlock} setEditingBlock={setEditingBlock} rewardText={rewardText} setRewardText={setRewardText} editingReward={editingReward} setEditingReward={setEditingReward} />}
+          {page === "today" && <TodayPage greeting={greeting} totalTasks={totalTasks} doneTasks={doneTasks} totalPomos={totalPomos} donePomos={donePomos} habits={habits} toggleHabit={toggleHabit} streak={streak} themeName={themeName} timerActive={timerActive} timeLeft={timeLeft} fmt={fmt} setTimerTaskId={setTimerTaskId} setPage={setPage} tasks={tasks} goTask={goTask} TaskRow={TaskRow} inbox={inbox} intentionText={intentionText} setIntentionText={setIntentionText} editingIntention={editingIntention} setEditingIntention={setEditingIntention} setNewTaskWs={setNewTaskWs} setShowNewTask={setShowNewTask} flash={flash} inputStyle={inputStyle} timeBlocks={timeBlocks} updateTimeBlock={updateTimeBlock} setShowNewBlock={setShowNewBlock} deleteTimeBlock={deleteTimeBlock} setEditingBlock={setEditingBlock} rewardText={rewardText} setRewardText={setRewardText} editingReward={editingReward} setEditingReward={setEditingReward} createTimeBlockFromTask={createTimeBlockFromTask} />}
           {page === "workspace" && <WorkspacePage activeWs={activeWs} activeWsId={activeWsId} tasks={tasks} projects={projects} wsNotes={wsNotes} wsDocs={wsDocs} wsTab={wsTab} setWsTab={setWsTab} setNewTaskWs={setNewTaskWs} setNewTaskProject={setNewTaskProject} setShowNewTask={setShowNewTask} setShowWsNote={setShowWsNote} setShowWsDoc={setShowWsDoc} deleteWorkspace={deleteWorkspace} deleteWsNote={deleteWsNote} deleteWsDoc={deleteWsDoc} goTask={goTask} goProject={goProject} setShowNewProject={setShowNewProject} setNewProjectWsId={setNewProjectWsId} deleteProject={deleteProject} TaskRow={TaskRow} />}
           {page === "project" && <ProjectPage activeProject={activeProject} activeProjectId={activeProjectId} activeWs={activeWs} tasks={tasks} wsNotes={wsNotes} wsDocs={wsDocs} setNewTaskWs={setNewTaskWs} setNewTaskProject={setNewTaskProject} setShowNewTask={setShowNewTask} setShowWsNote={setShowWsNote} setShowWsDoc={setShowWsDoc} deleteProject={deleteProject} deleteWsNote={deleteWsNote} deleteWsDoc={deleteWsDoc} goTask={goTask} goWs={goWs} TaskRow={TaskRow} />}
           {page === "task" && <TaskDetailPage activeTask={activeTask} ws={ws} pColors={pColors} setPage={setPage} page={page} startFocus={startFocus} toggleTask={toggleTask} toggleSubtask={toggleSubtask} setEditingTask={setEditingTask} deleteTask={deleteTask} setShowNewNote={setShowNewNote} deleteTaskNote={deleteTaskNote} flash={flash} />}

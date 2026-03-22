@@ -8,19 +8,20 @@ import { logger } from "../../lib/logger";
 const HOUR_HEIGHT = 52;
 const FIRST_HOUR = 6;
 const LAST_HOUR = 22;
-const SNAP = 0.5;
+const SNAP = 0.25; // 15-minute snap increments
 
 function snapHour(h) { return Math.round(h / SNAP) * SNAP; }
 function clampHour(h, min = FIRST_HOUR, max = LAST_HOUR) { return Math.max(min, Math.min(max, h)); }
 function formatTime(h) {
   const hr = Math.floor(h);
-  const min = h % 1 ? "30" : "00";
+  const minVal = Math.round((h % 1) * 60);
+  const min = minVal.toString().padStart(2, "0");
   if (hr === 0 || hr === 24) return `12:${min}`;
   if (hr > 12) return `${hr - 12}:${min}`;
   return `${hr}:${min}`;
 }
 
-function TodayCalendar({ timeBlocks, updateTimeBlock, setShowNewBlock, deleteTimeBlock, setEditingBlock, goTask }) {
+function TodayCalendar({ timeBlocks, updateTimeBlock, setShowNewBlock, deleteTimeBlock, setEditingBlock, goTask, createTimeBlockFromTask }) {
   const hours = Array.from({ length: LAST_HOUR - FIRST_HOUR }, (_, i) => i + FIRST_HOUR);
   const gridRef = useRef(null);
   const [drag, setDrag] = useState(null);
@@ -102,6 +103,22 @@ function TodayCalendar({ timeBlocks, updateTimeBlock, setShowNewBlock, deleteTim
             overflowY:"auto",
             touchAction: drag ? "none" : "auto",
             userSelect: drag ? "none" : "auto",
+          }}
+          onDragOver={(e) => { e.preventDefault(); }}
+          onDrop={(e) => {
+            e.preventDefault();
+            const dataStr = e.dataTransfer.getData("application/json");
+            if (!dataStr) return;
+            try {
+              const data = JSON.parse(dataStr);
+              if (data.taskId && createTimeBlockFromTask) {
+                const rect = gridRef.current.getBoundingClientRect();
+                const y = e.clientY - rect.top + gridRef.current.scrollTop;
+                let startHour = snapHour(FIRST_HOUR + y / HOUR_HEIGHT);
+                startHour = clampHour(startHour, FIRST_HOUR, LAST_HOUR - 1);
+                createTimeBlockFromTask({ ...data, startHour });
+              }
+            } catch(err) {}
           }}
         >
           <div style={{ position:"relative", height: hours.length * HOUR_HEIGHT }}>
@@ -199,6 +216,7 @@ export default function TodayPage({
   setNewTaskWs, setShowNewTask, flash, inputStyle,
   timeBlocks, updateTimeBlock, setShowNewBlock, deleteTimeBlock, setEditingBlock,
   rewardText, setRewardText, editingReward, setEditingReward,
+  createTimeBlockFromTask,
 }) {
   return (
     <div>
@@ -272,6 +290,7 @@ export default function TodayPage({
             deleteTimeBlock={deleteTimeBlock}
             setEditingBlock={setEditingBlock}
             goTask={goTask}
+            createTimeBlockFromTask={createTimeBlockFromTask}
           />
         </div>
 

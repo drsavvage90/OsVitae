@@ -179,9 +179,9 @@ export default function FinancePage({
       {financeTab === "Bills" && (() => {
         const now = new Date();
         const months = [];
-        for (let i = -1; i <= 10; i++) {
-          const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
-          months.push({ key: d.toISOString().slice(0, 7), short: d.toLocaleDateString("en-US", { month: "short" }), full: d.toLocaleDateString("en-US", { month: "long", year: "numeric" }), isCurrent: i === 0 });
+        for (let i = 0; i < 12; i++) {
+          const d = new Date(now.getFullYear(), i, 1);
+          months.push({ key: d.toISOString().slice(0, 7), short: d.toLocaleDateString("en-US", { month: "short" }), full: d.toLocaleDateString("en-US", { month: "long", year: "numeric" }), isCurrent: i === now.getMonth() });
         }
         const currentMonthKey = months.find(m => m.isCurrent).key;
         const totalBillsAmount = bills.reduce((s, b) => s + b.amount, 0);

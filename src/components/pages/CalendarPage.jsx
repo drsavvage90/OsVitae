@@ -5,7 +5,7 @@ import { Glass, Btn } from "../ui";
 const HOUR_HEIGHT = 60;
 const FIRST_HOUR = 6;
 const LAST_HOUR = 22;
-const SNAP = 0.5; // 30-minute snap increments
+const SNAP = 0.25; // 15-minute snap increments
 
 function snapHour(h) {
   return Math.round(h / SNAP) * SNAP;
@@ -17,7 +17,8 @@ function clampHour(h, min = FIRST_HOUR, max = LAST_HOUR) {
 
 function formatTime(h) {
   const hr = Math.floor(h);
-  const min = h % 1 ? "30" : "00";
+  const minVal = Math.round((h % 1) * 60);
+  const min = minVal.toString().padStart(2, "0");
   if (hr === 0 || hr === 24) return `12:${min}`;
   if (hr > 12) return `${hr - 12}:${min}`;
   return `${hr}:${min}`;
