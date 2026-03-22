@@ -587,10 +587,20 @@ export default function App() {
   };
 
   const createTimeBlockFromTask = async ({ taskId, title, color, startHour }) => {
-    const id = crypto.randomUUID();
     const blockDate = new Date().toISOString().split("T")[0];
     const endHour = startHour + 1;
-    setTimeBlocks(prev => [...prev, { id, title, startHour, endHour, taskId, color: color || "#5B8DEF", type: "work", date: blockDate }]);
+    // Use functional updater to atomically check-and-insert against latest state
+    let alreadyExists = false;
+    let id;
+    setTimeBlocks(prev => {
+      if (prev.some(b => b.taskId === taskId && b.date === blockDate)) {
+        alreadyExists = true;
+        return prev; // no change
+      }
+      id = crypto.randomUUID();
+      return [...prev, { id, title, startHour, endHour, taskId, color: color || "#5B8DEF", type: "work", date: blockDate }];
+    });
+    if (alreadyExists) return;
     flash("Task added to calendar!");
     const userId = await getUserId();
     if (!userId) return;
