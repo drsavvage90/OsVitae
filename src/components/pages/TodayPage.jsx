@@ -24,54 +24,6 @@ function formatTime(h) {
 function TodayCalendar({ timeBlocks, tasks, ws, projects, updateTimeBlock, setShowNewBlock, deleteTimeBlock, setEditingBlock, goTask, createTimeBlockFromTask }) {
   const hours = Array.from({ length: LAST_HOUR - FIRST_HOUR }, (_, i) => i + FIRST_HOUR);
   const gridRef = useRef(null);
-  const [drag, setDrag] = useState(null);
-  const [preview, setPreview] = useState(null);
-
-  const onPointerDown = useCallback((e, block, mode) => {
-    if (e.target.closest("[data-action]")) return;
-    e.preventDefault();
-    e.stopPropagation();
-    e.currentTarget.setPointerCapture(e.pointerId);
-    setDrag({ blockId: block.id, mode, pointerId: e.pointerId, startY: e.clientY, origStart: block.startHour, origEnd: block.endHour });
-    setPreview({ startHour: block.startHour, endHour: block.endHour });
-  }, []);
-
-  const onPointerMove = useCallback((e) => {
-    if (!drag) return;
-    e.preventDefault();
-    const deltaHours = (e.clientY - drag.startY) / HOUR_HEIGHT;
-    if (drag.mode === "move") {
-      const duration = drag.origEnd - drag.origStart;
-      let newStart = snapHour(drag.origStart + deltaHours);
-      newStart = clampHour(newStart, FIRST_HOUR, LAST_HOUR - duration);
-      setPreview({ startHour: newStart, endHour: newStart + duration });
-    } else {
-      let newEnd = snapHour(drag.origEnd + deltaHours);
-      newEnd = clampHour(newEnd, drag.origStart + SNAP, LAST_HOUR);
-      setPreview({ startHour: drag.origStart, endHour: newEnd });
-    }
-  }, [drag]);
-
-  const onPointerUp = useCallback((e) => {
-    if (!drag || !preview) { setDrag(null); setPreview(null); return; }
-    e.preventDefault();
-    const block = timeBlocks.find(b => b.id === drag.blockId);
-    if (block && (block.startHour !== preview.startHour || block.endHour !== preview.endHour)) {
-      updateTimeBlock(drag.blockId, { startHour: preview.startHour, endHour: preview.endHour });
-    }
-    setDrag(null);
-    setPreview(null);
-  }, [drag, preview, timeBlocks, updateTimeBlock]);
-
-  useEffect(() => {
-    if (!drag) return;
-    const move = (e) => onPointerMove(e);
-    const up = (e) => onPointerUp(e);
-    window.addEventListener("pointermove", move);
-    window.addEventListener("pointerup", up);
-    window.addEventListener("pointercancel", up);
-    return () => { window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); window.removeEventListener("pointercancel", up); };
-  }, [drag, onPointerMove, onPointerUp]);
 
   // Auto-scroll to current hour on mount
   const scrollRef = useRef(null);
@@ -101,8 +53,6 @@ function TodayCalendar({ timeBlocks, tasks, ws, projects, updateTimeBlock, setSh
             position:"relative",
             height: 480,
             overflowY:"auto",
-            touchAction: drag ? "none" : "auto",
-            userSelect: drag ? "none" : "auto",
           }}
           onDragOver={(e) => { e.preventDefault(); }}
         >
@@ -132,9 +82,8 @@ function TodayCalendar({ timeBlocks, tasks, ws, projects, updateTimeBlock, setSh
             )}
 
             {timeBlocks.filter(b => b.date === new Date().toISOString().split("T")[0]).map(block => {
-              const isDragging = drag && drag.blockId === block.id;
-              const startHour = isDragging ? preview.startHour : block.startHour;
-              const endHour = isDragging ? preview.endHour : block.endHour;
+              const startHour = block.startHour;
+              const endHour = block.endHour;
               const logicalHeight = (endHour - startHour) * HOUR_HEIGHT;
               const height = Math.max(logicalHeight, 38);
               const top = (startHour - FIRST_HOUR) * HOUR_HEIGHT;
@@ -153,13 +102,9 @@ function TodayCalendar({ timeBlocks, tasks, ws, projects, updateTimeBlock, setSh
                     border:`1px solid ${block.color}33`,
                     borderLeft:`3px solid ${block.color}`,
                     borderRadius:6,padding:"4px 8px",
-                    cursor: isDragging ? "grabbing" : "grab",
-                    overflow:"hidden",touchAction:"none",
-                    transition: isDragging ? "none" : "top 0.15s ease, height 0.15s ease",
-                    zIndex: isDragging ? 50 : 1,
-                    boxShadow: isDragging ? "0 4px 16px rgba(0,0,0,0.15)" : "none",
+                    overflow:"hidden",
+                    zIndex: 1,
                   }}
-                  onPointerDown={(e) => onPointerDown(e, block, "move")}
                 >
                   <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between" }}>
                     <div style={{ display:"flex",flexDirection:"column",flex:1,minWidth:0 }}>
@@ -185,13 +130,6 @@ function TodayCalendar({ timeBlocks, tasks, ws, projects, updateTimeBlock, setSh
                   </div>
                   <div style={{ fontFamily:"var(--mono)",fontSize:9,color:"var(--muted)",marginTop:2 }}>
                     {formatTime(startHour)} – {formatTime(endHour)}
-                  </div>
-                  {/* Resize handle */}
-                  <div
-                    onPointerDown={(e) => { e.stopPropagation(); onPointerDown(e, block, "resize"); }}
-                    style={{ position:"absolute",bottom:0,left:0,right:0,height:14,cursor:"ns-resize",touchAction:"none",display:"flex",alignItems:"center",justifyContent:"center" }}
-                  >
-                    <div style={{ width:28,height:3,borderRadius:2,background:block.color,opacity:0.35 }} />
                   </div>
                 </div>
               );

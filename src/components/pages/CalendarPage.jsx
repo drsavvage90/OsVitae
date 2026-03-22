@@ -30,90 +30,6 @@ export default function CalendarPage({
   const hours = Array.from({ length: LAST_HOUR - FIRST_HOUR }, (_, i) => i + FIRST_HOUR);
   const gridRef = useRef(null);
 
-  // Drag state: { blockId, mode: "move"|"resize", startY, origStart, origEnd }
-  const [drag, setDrag] = useState(null);
-  // Preview overrides during drag: { startHour, endHour }
-  const [preview, setPreview] = useState(null);
-
-  const getHourFromY = useCallback((clientY) => {
-    if (!gridRef.current) return FIRST_HOUR;
-    const rect = gridRef.current.getBoundingClientRect();
-    const y = clientY - rect.top + gridRef.current.scrollTop;
-    return FIRST_HOUR + y / HOUR_HEIGHT;
-  }, []);
-
-  const onPointerDown = useCallback((e, block, mode) => {
-    // Don't start drag on edit/delete button clicks
-    if (e.target.closest("[data-action]")) return;
-    e.preventDefault();
-    e.stopPropagation();
-    // Capture pointer for reliable tracking outside element
-    e.currentTarget.setPointerCapture(e.pointerId);
-    setDrag({
-      blockId: block.id,
-      mode,
-      pointerId: e.pointerId,
-      startY: e.clientY,
-      origStart: block.startHour,
-      origEnd: block.endHour,
-    });
-    setPreview({ startHour: block.startHour, endHour: block.endHour });
-  }, []);
-
-  const onPointerMove = useCallback((e) => {
-    if (!drag) return;
-    e.preventDefault();
-    const deltaY = e.clientY - drag.startY;
-    const deltaHours = deltaY / HOUR_HEIGHT;
-
-    if (drag.mode === "move") {
-      const duration = drag.origEnd - drag.origStart;
-      let newStart = snapHour(drag.origStart + deltaHours);
-      newStart = clampHour(newStart, FIRST_HOUR, LAST_HOUR - duration);
-      setPreview({ startHour: newStart, endHour: newStart + duration });
-    } else {
-      // resize
-      let newEnd = snapHour(drag.origEnd + deltaHours);
-      newEnd = clampHour(newEnd, drag.origStart + SNAP, LAST_HOUR);
-      setPreview({ startHour: drag.origStart, endHour: newEnd });
-    }
-  }, [drag]);
-
-  const onPointerUp = useCallback((e) => {
-    if (!drag || !preview) {
-      setDrag(null);
-      setPreview(null);
-      return;
-    }
-    e.preventDefault();
-    const { blockId } = drag;
-    const { startHour, endHour } = preview;
-    const block = timeBlocks.find(b => b.id === blockId);
-
-    // Only update if something actually changed
-    if (block && (block.startHour !== startHour || block.endHour !== endHour)) {
-      updateTimeBlock(blockId, { startHour, endHour });
-    }
-
-    setDrag(null);
-    setPreview(null);
-  }, [drag, preview, timeBlocks, updateTimeBlock]);
-
-  // Attach move/up listeners to window so drag works outside the grid
-  useEffect(() => {
-    if (!drag) return;
-    const move = (e) => onPointerMove(e);
-    const up = (e) => onPointerUp(e);
-    window.addEventListener("pointermove", move);
-    window.addEventListener("pointerup", up);
-    window.addEventListener("pointercancel", up);
-    return () => {
-      window.removeEventListener("pointermove", move);
-      window.removeEventListener("pointerup", up);
-      window.removeEventListener("pointercancel", up);
-    };
-  }, [drag, onPointerMove, onPointerUp]);
-
   return (
     <div>
       <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20 }}>
@@ -139,8 +55,6 @@ export default function CalendarPage({
           style={{
             position:"relative",
             height:hours.length * HOUR_HEIGHT,
-            touchAction: drag ? "none" : "auto",
-            userSelect: drag ? "none" : "auto",
           }}
         >
           {hours.map((h, i) => (
@@ -151,9 +65,8 @@ export default function CalendarPage({
             </div>
           ))}
           {timeBlocks.filter(b => b.date === new Date().toISOString().split("T")[0]).map(block => {
-            const isDragging = drag && drag.blockId === block.id;
-            const startHour = isDragging ? preview.startHour : block.startHour;
-            const endHour = isDragging ? preview.endHour : block.endHour;
+            const startHour = block.startHour;
+            const endHour = block.endHour;
             const logicalHeight = (endHour - startHour) * HOUR_HEIGHT;
             const height = Math.max(logicalHeight, 46);
             const top = (startHour - FIRST_HOUR) * HOUR_HEIGHT;
@@ -177,23 +90,10 @@ export default function CalendarPage({
                   borderLeft: `3px solid ${block.color}`,
                   borderRadius: 8,
                   padding: "8px 12px",
-                  cursor: isDragging ? "grabbing" : "grab",
                   overflow: "hidden",
-                  touchAction: "none",
-                  transition: isDragging ? "none" : "top 0.15s ease, height 0.15s ease",
-                  zIndex: isDragging ? 50 : 1,
-                  boxShadow: isDragging ? "0 4px 20px rgba(0,0,0,0.15)" : "none",
+                  zIndex: 1,
                 }}
-                onPointerDown={(e) => onPointerDown(e, block, "move")}
               >
-                {/* Drag handle indicator */}
-                <div style={{
-                  position:"absolute",top:0,left:0,right:0,height:20,
-                  display:"flex",alignItems:"center",justifyContent:"center",
-                  opacity: 0.3,pointerEvents:"none",
-                }}>
-                  <GripVertical size={10} color="var(--muted)" />
-                </div>
 
                 <div style={{ flex:1, display:"flex", flexDirection:"column", justifyContent:"center" }}>
                   <div style={{ fontFamily:"var(--heading)",fontSize:13,fontWeight:700,color:block.color,overflow:"hidden",textOverflow:"ellipsis",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical" }}>
