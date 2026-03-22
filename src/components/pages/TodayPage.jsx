@@ -42,9 +42,19 @@ function TodayCalendar({ timeBlocks, tasks, ws, projects, updateTimeBlock, setSh
 
   return (
     <div>
-      <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12 }}>
-        <h2 style={{ fontFamily:"var(--heading)",fontSize:19,color:"var(--text)",margin:0,fontWeight:700 }}>Today's Calendar</h2>
-        <Btn small primary onClick={() => setShowNewBlock(true)}>+ Block</Btn>
+      <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16 }}>
+        <h2 style={{ fontFamily:"var(--heading)",fontSize:20,color:"var(--text)",margin:0,fontWeight:800 }}>Today's Calendar</h2>
+        <div style={{ display:"flex", gap: 10 }}>
+          <Btn primary onClick={() => {
+            const seen = new Set();
+            timeBlocks.forEach(b => {
+              const k = `${b.title}-${b.startHour}`;
+              if (seen.has(k)) deleteTimeBlock(b.id);
+              else seen.add(k);
+            });
+          }} style={{ background: "#EF4444" }}>🧹 Clean Duplicates</Btn>
+          <Btn primary onClick={() => setShowNewBlock(true)}>+ Block</Btn>
+        </div>
       </div>
       <Glass style={{ padding:0,overflow:"hidden" }}>
         <div
