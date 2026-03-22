@@ -3343,7 +3343,7 @@ export default function App() {
               <span style={{ display: "flex" }}><Flame size={14} color="var(--danger)" /></span>
               <span style={{ fontFamily:"var(--mono)",fontSize:11,color:"var(--danger)",fontWeight:700 }}>{streak}</span>
             </div>
-            <div onClick={() => setPage("rewards")} style={{ width:32,height:32,borderRadius:10,background:themeName === "halo" ? "linear-gradient(135deg, #4ADE80, #22C55E)" : "linear-gradient(135deg, #6366F1, #8B5CF6)",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"var(--body)",fontSize:12,fontWeight:700,color:"#fff",cursor:"pointer",flexShrink:0 }}>JD</div>
+            <div onClick={() => setPage("rewards")} style={{ width:32,height:32,borderRadius:10,background:themeName === "halo" ? "linear-gradient(135deg, #4ADE80, #22C55E)" : "linear-gradient(135deg, #6366F1, #8B5CF6)",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"var(--body)",fontSize:12,fontWeight:700,color:"#fff",cursor:"pointer",flexShrink:0 }}>{profileData.full_name ? profileData.full_name.split(" ").map(n => n[0]).join("").slice(0,2).toUpperCase() : "?"}</div>
           </div>
         </div>
 
