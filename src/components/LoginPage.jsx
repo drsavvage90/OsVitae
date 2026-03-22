@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { logger } from '../lib/logger'
-import { Zap } from 'lucide-react'
 import PrivacyPolicy from './PrivacyPolicy'
 
 export default function LoginPage() {
@@ -37,11 +36,12 @@ export default function LoginPage() {
       }}>
         <div style={{
           width: 56, height: 56, borderRadius: 16,
-          background: 'linear-gradient(135deg, #5B8DEF, #A78BFA)',
+          overflow: 'hidden',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           margin: '0 auto 20px',
+          boxShadow: '0 4px 16px rgba(0,0,0,0.1)'
         }}>
-          <Zap size={28} color="#fff" />
+          <img src="/favicon.png" alt="OSVitae Logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         </div>
 
         <h1 style={{

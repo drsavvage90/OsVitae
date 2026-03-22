@@ -2,7 +2,7 @@ import {
   Monitor, Brain, Book, Leaf, Briefcase, Folder, Heart, Star,
   Coffee, Music, Camera, Globe, Lightbulb, Rocket, Compass,
   Palette, Hash, Anchor, Award, Bell, Sprout, TreePine, Mountain,
-  Zap, Target, Bird, Waves,
+  Sparkles, Target, Bird, Waves,
 } from "lucide-react";
 
 // ═══════════════════════════════════════
@@ -53,7 +53,7 @@ export const ACHIEVEMENTS = [
   { id: "a2", icon: <Leaf size={16} />, title: "Growing Strong", desc: "Complete 10 pomodoros", earned: false },
   { id: "a3", icon: <TreePine size={24} />, title: "Deep Roots", desc: "Maintain a 7-day streak", earned: false },
   { id: "a4", icon: <Mountain size={24} />, title: "Summit", desc: "Complete 50 pomodoros", earned: false },
-  { id: "a5", icon: <Zap size={24} />, title: "Lightning Focus", desc: "5 pomodoros in one day", earned: false },
+  { id: "a5", icon: <Sparkles size={24} />, title: "Lightning Focus", desc: "5 pomodoros in one day", earned: false },
   { id: "a6", icon: <Target size={24} />, title: "Bullseye", desc: "Complete all daily tasks 3 days running", earned: false },
   { id: "a7", icon: <Bird size={24} />, title: "Night Owl", desc: "Complete a task after 10pm", earned: false },
   { id: "a8", icon: <Waves size={24} />, title: "Flow Master", desc: "Maintain a 30-day streak", earned: false },
@@ -169,7 +169,7 @@ export const FINANCE_CATEGORIES = {
     { id: "rent", label: "Rent/Housing", color: "#EF4444", icon: "Home" },
     { id: "food", label: "Food & Groceries", color: "#F97316", icon: "Coffee" },
     { id: "transport", label: "Transport", color: "#FBBF24", icon: "Compass" },
-    { id: "utilities", label: "Utilities", color: "#6366F1", icon: "Zap" },
+    { id: "utilities", label: "Utilities", color: "#6366F1", icon: "Lightbulb" },
     { id: "entertainment", label: "Entertainment", color: "#EC4899", icon: "Music" },
     { id: "shopping", label: "Shopping", color: "#8B5CF6", icon: "CreditCard" },
     { id: "subscriptions", label: "Subscriptions", color: "#14B8A6", icon: "Repeat" },

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import {
-  Zap, Home, ClipboardList, Timer, Trophy,
+  Home, ClipboardList, Timer, Trophy,
   Flame, Gift, Check,
   Search, Clock, CheckCircle2, ArrowLeft, Plus, X,
   RefreshCw, Inbox, Trash2, ChevronRight, Menu,

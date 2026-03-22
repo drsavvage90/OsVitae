@@ -1,4 +1,4 @@
-import { Play, Pause, RotateCcw, SkipForward, Flame, Target, Zap, Coffee } from "lucide-react";
+import { Play, Pause, RotateCcw, SkipForward, Flame, Target, Sparkles, Coffee } from "lucide-react";
 import { Ring, Glass } from "../ui";
 
 export default function TimerPage({
@@ -215,7 +215,7 @@ export default function TimerPage({
 
         {/* XP reward */}
         <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-          <Zap size={13} color="var(--xp-color)" />
+          <Sparkles size={13} color="var(--xp-color)" />
           <span style={{ fontFamily: "var(--mono)", fontSize: 12, color: "var(--xp-color)", fontWeight: 600 }}>+15 XP</span>
         </div>
       </div>
