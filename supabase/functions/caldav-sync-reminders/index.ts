@@ -45,7 +45,7 @@ serve(async (req: Request) => {
     }
 
     const password = await decrypt(creds.app_password_encrypted);
-    const appleId = await decrypt(appleId);
+    const appleId = await decrypt(creds.apple_id);
 
     // If "all", fetch from every reminder list; otherwise just the selected one
     let reminderListUrls: string[];
