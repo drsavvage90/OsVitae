@@ -47,6 +47,7 @@ export default function App() {
   const [page, setPage] = useState("today");
   const [activeWsId, setActiveWsId] = useState(null);
   const [activeTaskId, setActiveTaskId] = useState(null);
+  const didDragRef = useRef(false);
   const [editingTask, setEditingTask] = useState(null);
   const [wsTab, setWsTab] = useState("Projects");
   const [collapsed, setCollapsed] = useState(false);
@@ -612,8 +613,6 @@ export default function App() {
       logger.error("Failed to save time block:", error);
       setTimeBlocks(prev => prev.filter(b => b.id !== id));
       flash("Failed to save time block.");
-    } else {
-      if (typeof syncAll === "function") syncAll();
     }
   };
 
@@ -734,17 +733,17 @@ export default function App() {
       }}
         onMouseEnter={e => { if(!task.done){ e.currentTarget.style.borderColor="var(--border-hover)"; e.currentTarget.style.boxShadow="var(--hover-shadow)"; }}}
         onMouseLeave={e => { e.currentTarget.style.borderColor="var(--card-border)"; e.currentTarget.style.boxShadow="var(--card-shadow-sm)"; }}
-        onClick={() => { if (TaskRow._didDrag) { TaskRow._didDrag = false; return; } goTask(task.id); }}
+        onClick={() => { if (didDragRef.current) { didDragRef.current = false; return; } goTask(task.id); }}
         draggable={true}
         onDragStart={(e) => {
-          TaskRow._didDrag = true;
+          didDragRef.current = true;
           e.dataTransfer.setData("application/json", JSON.stringify({
             taskId: task.id,
             title: task.title,
             color: w?.color || proj?.color || pColors[task.priority] || "#5B8DEF"
           }));
         }}
-        onDragEnd={() => { setTimeout(() => { TaskRow._didDrag = false; }, 0); }}
+        onDragEnd={() => { setTimeout(() => { didDragRef.current = false; }, 100); }}
       >
         <div onClick={e => { e.stopPropagation(); toggleTask(task.id); }} style={{
           width:20,height:20,borderRadius:6,flexShrink:0,
