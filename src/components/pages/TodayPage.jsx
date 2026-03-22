@@ -105,34 +105,6 @@ function TodayCalendar({ timeBlocks, tasks, ws, projects, updateTimeBlock, setSh
             userSelect: drag ? "none" : "auto",
           }}
           onDragOver={(e) => { e.preventDefault(); }}
-          onDrop={(e) => {
-            e.preventDefault();
-            const dataStr = e.dataTransfer.getData("application/json");
-            if (!dataStr) return;
-            try {
-              const data = JSON.parse(dataStr);
-              if (data.taskId && createTimeBlockFromTask) {
-                const rect = gridRef.current.getBoundingClientRect();
-                const y = e.clientY - rect.top + gridRef.current.scrollTop;
-                let startHour = snapHour(FIRST_HOUR + y / HOUR_HEIGHT);
-                startHour = clampHour(startHour, FIRST_HOUR, LAST_HOUR - 1);
-                
-                const todayDate = new Date().toISOString().split("T")[0];
-                // Find ALL blocks for this task today
-                const matches = timeBlocks.filter(b => b.taskId === data.taskId && b.date === todayDate);
-                if (matches.length > 0) {
-                  // Keep the first one and move it; delete all extras
-                  const keep = matches[0];
-                  const extras = matches.slice(1);
-                  const duration = keep.endHour - keep.startHour;
-                  updateTimeBlock(keep.id, { startHour, endHour: startHour + duration });
-                  extras.forEach(b => deleteTimeBlock(b.id));
-                } else {
-                  createTimeBlockFromTask({ ...data, startHour });
-                }
-              }
-            } catch(err) {}
-          }}
         >
           <div style={{ position:"relative", height: hours.length * HOUR_HEIGHT }}>
             {hours.map((h, i) => (
@@ -177,8 +149,8 @@ function TodayCalendar({ timeBlocks, tasks, ws, projects, updateTimeBlock, setSh
                   key={block.id}
                   style={{
                     position:"absolute",top:top+1,left:50,right:6,height:height-2,
-                    background:`${block.color}${isDragging?"28":"14"}`,
-                    border:`1px solid ${block.color}${isDragging?"66":"33"}`,
+                    background:`${block.color}14`,
+                    border:`1px solid ${block.color}33`,
                     borderLeft:`3px solid ${block.color}`,
                     borderRadius:6,padding:"4px 8px",
                     cursor: isDragging ? "grabbing" : "grab",
@@ -188,7 +160,6 @@ function TodayCalendar({ timeBlocks, tasks, ws, projects, updateTimeBlock, setSh
                     boxShadow: isDragging ? "0 4px 16px rgba(0,0,0,0.15)" : "none",
                   }}
                   onPointerDown={(e) => onPointerDown(e, block, "move")}
-                  onClick={() => { if (!drag && block.taskId) goTask(block.taskId); }}
                 >
                   <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between" }}>
                     <div style={{ display:"flex",flexDirection:"column",flex:1,minWidth:0 }}>

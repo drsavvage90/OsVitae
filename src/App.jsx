@@ -718,7 +718,6 @@ export default function App() {
   };
 
   // ─── TASK ROW (reused in today & workspace & allTasks) ───
-  const mouseDownPos = useRef(null);
   const TaskRow = ({ task, idx, showWs = true, showProject = true }) => {
     const w = ws.find(x => x.id === task.wsId);
     const proj = projects.find(p => p.id === task.projectId);
@@ -733,25 +732,7 @@ export default function App() {
       }}
         onMouseEnter={e => { if(!task.done){ e.currentTarget.style.borderColor="var(--border-hover)"; e.currentTarget.style.boxShadow="var(--hover-shadow)"; }}}
         onMouseLeave={e => { e.currentTarget.style.borderColor="var(--card-border)"; e.currentTarget.style.boxShadow="var(--card-shadow-sm)"; }}
-        onMouseDown={(e) => { mouseDownPos.current = { x: e.clientX, y: e.clientY }; }}
-        onClick={(e) => {
-          if (mouseDownPos.current) {
-            const dx = Math.abs(e.clientX - mouseDownPos.current.x);
-            const dy = Math.abs(e.clientY - mouseDownPos.current.y);
-            if (dx > 5 || dy > 5) { mouseDownPos.current = null; return; }
-          }
-          mouseDownPos.current = null;
-          goTask(task.id);
-        }}
-        draggable={true}
-        onDragStart={(e) => {
-          mouseDownPos.current = { x: -9999, y: -9999 }; // force click suppression
-          e.dataTransfer.setData("application/json", JSON.stringify({
-            taskId: task.id,
-            title: task.title,
-            color: w?.color || proj?.color || pColors[task.priority] || "#5B8DEF"
-          }));
-        }}
+        onClick={() => goTask(task.id)}
       >
         <div onClick={e => { e.stopPropagation(); toggleTask(task.id); }} style={{
           width:20,height:20,borderRadius:6,flexShrink:0,
@@ -2026,6 +2007,17 @@ export default function App() {
       <Modal open={!!editingBlock} onClose={() => setEditingBlock(null)} title="Edit Time Block">
         {editingBlock && (() => {
           const set = (k, v) => setEditingBlock(b => ({ ...b, [k]: v }));
+          const timeOptions = [];
+          for (let h = 6; h <= 22; h++) {
+            for (let m = 0; m < 60; m += 15) {
+              if (h === 22 && m > 0) break;
+              const val = h + m / 60;
+              const hr = h > 12 ? h - 12 : h === 0 ? 12 : h;
+              const ampm = h >= 12 ? "PM" : "AM";
+              const label = `${hr}:${m.toString().padStart(2,"0")} ${ampm}`;
+              timeOptions.push({ val, label });
+            }
+          }
           return <>
             <div style={{ marginBottom:14 }}>
               <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>Title</label>
@@ -2033,12 +2025,16 @@ export default function App() {
             </div>
             <div style={{ display:"flex",gap:14,marginBottom:20 }}>
               <div style={{ flex:1 }}>
-                <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>Start Hour</label>
-                <input type="number" min="6" max="21" value={editingBlock.startHour} onChange={e => set("startHour", parseInt(e.target.value))} style={inputStyle} />
+                <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>Start Time</label>
+                <select value={editingBlock.startHour} onChange={e => set("startHour", parseFloat(e.target.value))} style={inputStyle}>
+                  {timeOptions.map(o => <option key={o.val} value={o.val}>{o.label}</option>)}
+                </select>
               </div>
               <div style={{ flex:1 }}>
-                <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>End Hour</label>
-                <input type="number" min="7" max="22" value={editingBlock.endHour} onChange={e => set("endHour", parseInt(e.target.value))} style={inputStyle} />
+                <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>End Time</label>
+                <select value={editingBlock.endHour} onChange={e => set("endHour", parseFloat(e.target.value))} style={inputStyle}>
+                  {timeOptions.map(o => <option key={o.val} value={o.val}>{o.label}</option>)}
+                </select>
               </div>
             </div>
             <div style={{ display:"flex",justifyContent:"flex-end",gap:10 }}>

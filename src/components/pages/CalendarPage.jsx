@@ -172,8 +172,8 @@ export default function CalendarPage({
                   left: 68,
                   right: 12,
                   height: height - 4,
-                  background: `${block.color}${isDragging ? "28" : "14"}`,
-                  border: `1px solid ${block.color}${isDragging ? "66" : "33"}`,
+                  background: `${block.color}14`,
+                  border: `1px solid ${block.color}33`,
                   borderLeft: `3px solid ${block.color}`,
                   borderRadius: 8,
                   padding: "8px 12px",
@@ -183,13 +183,8 @@ export default function CalendarPage({
                   transition: isDragging ? "none" : "top 0.15s ease, height 0.15s ease",
                   zIndex: isDragging ? 50 : 1,
                   boxShadow: isDragging ? "0 4px 20px rgba(0,0,0,0.15)" : "none",
-                  opacity: isDragging ? 0.95 : 1,
                 }}
                 onPointerDown={(e) => onPointerDown(e, block, "move")}
-                onClick={(e) => {
-                  // Only navigate if not finishing a drag
-                  if (!drag && block.taskId) goTask(block.taskId);
-                }}
               >
                 {/* Drag handle indicator */}
                 <div style={{

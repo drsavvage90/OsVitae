@@ -1,4 +1,4 @@
-const CACHE_NAME = 'osvitae-v1';
+const CACHE_NAME = 'osvitae-v3';
 const ASSETS = [
   '/',
   '/index.html',
