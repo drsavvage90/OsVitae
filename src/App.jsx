@@ -923,7 +923,7 @@ export default function App() {
     }}>
       <div style={{ padding: collapsed ? "20px 20px 16px" : "20px 22px 16px", borderBottom: "1px solid var(--border-light)" }}>
         <div onClick={goToday} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
-          <div style={{ width: 36, height: 36, borderRadius: 10, background: "var(--accent-gradient)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Zap size={18} color="#fff" /></div>
+          <div style={{ width: 36, height: 36, borderRadius: 10, background: themeName === "halo" ? "linear-gradient(135deg, #4ADE80, #FFB000)" : "linear-gradient(135deg, #6366F1, #8B5CF6, #A855F7)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Zap size={18} color="#fff" /></div>
           {!collapsed && <div>
             <div style={{ fontFamily: "var(--heading)", fontSize: 16, fontWeight: 800, color: "var(--text)", letterSpacing: -0.3 }}>OSVitae</div>
             <div style={{ fontFamily: "var(--mono)", fontSize: 9, color: "var(--muted)", fontWeight: 500, letterSpacing: 0.5 }}>Personal Suite</div>
@@ -1171,12 +1171,12 @@ export default function App() {
           </div>
         </Glass>
         <div onClick={() => { setTimerTaskId(null); setPage("timer"); }} style={{
-          background:"var(--accent-gradient)",borderRadius:16,padding:20,
+          background:themeName === "halo" ? "linear-gradient(135deg, #4ADE80, #22C55E)" : "linear-gradient(135deg, #6366F1, #8B5CF6, #A855F7)",borderRadius:16,padding:20,
           display:"flex",alignItems:"center",justifyContent:"center",gap:14,cursor:"pointer",color:"#fff",
-          boxShadow:"0 4px 24px rgba(99,102,241,0.3)",transition:"all 0.25s",
+          boxShadow:themeName === "halo" ? "0 4px 24px rgba(74,222,128,0.3)" : "0 4px 24px rgba(99,102,241,0.35)",transition:"all 0.25s",
         }}
-          onMouseEnter={e => { e.currentTarget.style.transform="translateY(-2px)"; e.currentTarget.style.boxShadow="0 8px 32px rgba(99,102,241,0.4)"; }}
-          onMouseLeave={e => { e.currentTarget.style.transform="none"; e.currentTarget.style.boxShadow="0 4px 24px rgba(99,102,241,0.3)"; }}
+          onMouseEnter={e => { e.currentTarget.style.transform="translateY(-2px)"; e.currentTarget.style.boxShadow=themeName === "halo" ? "0 8px 32px rgba(74,222,128,0.4)" : "0 8px 32px rgba(99,102,241,0.45)"; }}
+          onMouseLeave={e => { e.currentTarget.style.transform="none"; e.currentTarget.style.boxShadow=themeName === "halo" ? "0 4px 24px rgba(74,222,128,0.3)" : "0 4px 24px rgba(99,102,241,0.35)"; }}
         >
           <div style={{ width:44,height:44,borderRadius:14,background:"rgba(255,255,255,0.2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20 }}><Play fill="currentColor" size={20} /></div>
           <div>
@@ -1512,7 +1512,7 @@ export default function App() {
         <div style={{ display:"flex",gap:12,marginTop:20 }}>
           <div onClick={() => setTimerActive(!timerActive)} style={{
             width:64,height:64,borderRadius:18,cursor:"pointer",
-            background: timerActive ? "rgba(99,102,241,0.12)" : "var(--accent-gradient)",
+            background: timerActive ? "rgba(99,102,241,0.12)" : (themeName === "halo" ? "linear-gradient(135deg, #4ADE80, #22C55E)" : "linear-gradient(135deg, #6366F1, #8B5CF6, #A855F7)"),
             backdropFilter:"blur(16px)",WebkitBackdropFilter:"blur(16px)",
             display:"flex",alignItems:"center",justifyContent:"center",fontSize:24,
             color: timerActive ? "var(--primary)" : "#fff",
@@ -1773,7 +1773,7 @@ export default function App() {
 
         <button onClick={saveProfile} disabled={profileSaving} style={{
           padding:"10px 20px",borderRadius:10,border:"none",
-          background:"var(--accent-gradient)",color:"#fff",
+          background:themeName === "halo" ? "linear-gradient(135deg, #4ADE80, #FFB000)" : "linear-gradient(135deg, #6366F1, #8B5CF6, #A855F7)",color:"#fff",
           fontFamily:"var(--body)",fontSize:13,fontWeight:600,cursor:"pointer",
           display:"flex",alignItems:"center",gap:8,
           opacity: profileSaving ? 0.6 : 1,
@@ -1800,7 +1800,7 @@ export default function App() {
         {!appleConnected && !showAppleConnect && (
           <button onClick={() => setShowAppleConnect(true)} style={{
             padding:"10px 20px",borderRadius:10,border:"none",
-            background:"var(--accent-gradient)",color:"#fff",
+            background:themeName === "halo" ? "linear-gradient(135deg, #4ADE80, #FFB000)" : "linear-gradient(135deg, #6366F1, #8B5CF6, #A855F7)",color:"#fff",
             fontFamily:"var(--body)",fontSize:13,fontWeight:600,cursor:"pointer",
           }}>Connect Apple Calendar</button>
         )}
@@ -1883,7 +1883,7 @@ export default function App() {
             <div style={{ display:"flex",alignItems:"center",gap:12,marginBottom:16,paddingTop:12,borderTop:"1px solid var(--border-light)" }}>
               <button onClick={syncAll} disabled={syncStatus === "syncing"} style={{
                 padding:"10px 20px",borderRadius:10,border:"none",
-                background:"var(--accent-gradient)",color:"#fff",
+                background:themeName === "halo" ? "linear-gradient(135deg, #4ADE80, #FFB000)" : "linear-gradient(135deg, #6366F1, #8B5CF6, #A855F7)",color:"#fff",
                 fontFamily:"var(--body)",fontSize:13,fontWeight:600,cursor:"pointer",
                 display:"flex",alignItems:"center",gap:8,
                 opacity: syncStatus === "syncing" ? 0.6 : 1,
@@ -1919,7 +1919,7 @@ export default function App() {
       <div style={{ display:"flex",alignItems:"center",gap:10,marginBottom:24 }}>
         <span style={{ fontFamily:"var(--mono)",fontSize:12,color:"var(--xp-color)",fontWeight:700 }}>LVL {level}</span>
         <div style={{ flex:1,height:8,background:"var(--card-border)",borderRadius:8,overflow:"hidden" }}>
-          <div style={{ width:`${(xp/500)*100}%`,height:"100%",borderRadius:8,background:"var(--xp-gradient)",transition:"width 0.8s" }} />
+          <div style={{ width:`${(xp/500)*100}%`,height:"100%",borderRadius:8,background:themeName === "halo" ? "linear-gradient(90deg, #FFB000, #4ADE80)" : "linear-gradient(90deg, #A78BFA, #6366F1, #818CF8)",transition:"width 0.8s" }} />
         </div>
         <span style={{ fontFamily:"var(--mono)",fontSize:11,color:"var(--muted)" }}>{xp}/500 XP</span>
       </div>
@@ -3201,7 +3201,7 @@ export default function App() {
     <div style={{
       ...theme,
       display:"flex",height:"100dvh",overflow:"hidden",
-      background:"var(--app-bg)",
+      background: themeName === "halo" ? "#0A120E" : "linear-gradient(135deg, #dfe7fd 0%, #e8dff5 25%, #f5e6f0 50%, #dceefb 75%, #e0f4f1 100%)",
       transition:"background 0.3s ease",position:"relative",
     }}>
       <style>{`
@@ -3331,14 +3331,14 @@ export default function App() {
             <div className="topbar-xp" style={{ alignItems:"center",gap:8 }}>
               <span style={{ fontFamily:"var(--mono)",fontSize:10,color:"var(--xp-color)",fontWeight:700 }}>LVL {level}</span>
               <div style={{ flex:1,height:5,background:"var(--card-border)",borderRadius:8,overflow:"hidden" }}>
-                <div style={{ width:`${(xp/500)*100}%`,height:"100%",borderRadius:8,background:"var(--xp-gradient)",transition:"width 0.8s" }} />
+                <div style={{ width:`${(xp/500)*100}%`,height:"100%",borderRadius:8,background:themeName === "halo" ? "linear-gradient(90deg, #FFB000, #4ADE80)" : "linear-gradient(90deg, #A78BFA, #6366F1, #818CF8)",transition:"width 0.8s" }} />
               </div>
             </div>
             <div style={{ display:"flex",alignItems:"center",gap:4 }}>
               <span style={{ display: "flex" }}><Flame size={14} color="var(--danger)" /></span>
               <span style={{ fontFamily:"var(--mono)",fontSize:11,color:"var(--danger)",fontWeight:700 }}>{streak}</span>
             </div>
-            <div onClick={() => setPage("rewards")} style={{ width:32,height:32,borderRadius:10,background:"var(--btn-gradient)",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"var(--body)",fontSize:12,fontWeight:700,color:"#fff",cursor:"pointer",flexShrink:0 }}>JD</div>
+            <div onClick={() => setPage("rewards")} style={{ width:32,height:32,borderRadius:10,background:themeName === "halo" ? "linear-gradient(135deg, #4ADE80, #22C55E)" : "linear-gradient(135deg, #6366F1, #8B5CF6)",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"var(--body)",fontSize:12,fontWeight:700,color:"#fff",cursor:"pointer",flexShrink:0 }}>JD</div>
           </div>
         </div>
 
