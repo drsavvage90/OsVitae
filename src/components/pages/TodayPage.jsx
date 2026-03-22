@@ -118,10 +118,15 @@ function TodayCalendar({ timeBlocks, tasks, ws, projects, updateTimeBlock, setSh
                 startHour = clampHour(startHour, FIRST_HOUR, LAST_HOUR - 1);
                 
                 const todayDate = new Date().toISOString().split("T")[0];
-                const existing = timeBlocks.find(b => b.taskId === data.taskId && b.date === todayDate);
-                if (existing) {
-                  const duration = existing.endHour - existing.startHour;
-                  updateTimeBlock(existing.id, { startHour, endHour: startHour + duration });
+                // Find ALL blocks for this task today
+                const matches = timeBlocks.filter(b => b.taskId === data.taskId && b.date === todayDate);
+                if (matches.length > 0) {
+                  // Keep the first one and move it; delete all extras
+                  const keep = matches[0];
+                  const extras = matches.slice(1);
+                  const duration = keep.endHour - keep.startHour;
+                  updateTimeBlock(keep.id, { startHour, endHour: startHour + duration });
+                  extras.forEach(b => deleteTimeBlock(b.id));
                 } else {
                   createTimeBlockFromTask({ ...data, startHour });
                 }

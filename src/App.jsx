@@ -47,7 +47,7 @@ export default function App() {
   const [page, setPage] = useState("today");
   const [activeWsId, setActiveWsId] = useState(null);
   const [activeTaskId, setActiveTaskId] = useState(null);
-  const didDragRef = useRef(false);
+  const dragStartTimeRef = useRef(0);
   const [editingTask, setEditingTask] = useState(null);
   const [wsTab, setWsTab] = useState("Projects");
   const [collapsed, setCollapsed] = useState(false);
@@ -733,17 +733,16 @@ export default function App() {
       }}
         onMouseEnter={e => { if(!task.done){ e.currentTarget.style.borderColor="var(--border-hover)"; e.currentTarget.style.boxShadow="var(--hover-shadow)"; }}}
         onMouseLeave={e => { e.currentTarget.style.borderColor="var(--card-border)"; e.currentTarget.style.boxShadow="var(--card-shadow-sm)"; }}
-        onClick={() => { if (didDragRef.current) { didDragRef.current = false; return; } goTask(task.id); }}
+        onClick={() => { if (Date.now() - dragStartTimeRef.current < 800) return; goTask(task.id); }}
         draggable={true}
         onDragStart={(e) => {
-          didDragRef.current = true;
+          dragStartTimeRef.current = Date.now();
           e.dataTransfer.setData("application/json", JSON.stringify({
             taskId: task.id,
             title: task.title,
             color: w?.color || proj?.color || pColors[task.priority] || "#5B8DEF"
           }));
         }}
-        onDragEnd={() => { setTimeout(() => { didDragRef.current = false; }, 100); }}
       >
         <div onClick={e => { e.stopPropagation(); toggleTask(task.id); }} style={{
           width:20,height:20,borderRadius:6,flexShrink:0,
