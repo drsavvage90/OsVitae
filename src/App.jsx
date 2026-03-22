@@ -996,11 +996,38 @@ export default function App() {
     ]);
 
     if (dbBlocks) {
-      setTimeBlocks(dbBlocks.map(b => ({
+      const mapped = dbBlocks.map(b => ({
         id: b.id, title: b.title, startHour: b.start_hour, endHour: b.end_hour,
         taskId: b.task_id || null, color: b.color || "#5B8DEF", type: b.type || "work",
         date: b.block_date, externalId: b.external_id,
-      })));
+      }));
+      // Deduplicate: for blocks linked to the same task on the same date, keep only the first
+      const seen = new Map();
+      const keep = [];
+      const dupeIds = [];
+      for (const block of mapped) {
+        if (block.taskId) {
+          const key = `${block.taskId}-${block.date}`;
+          if (seen.has(key)) {
+            dupeIds.push(block.id);
+          } else {
+            seen.set(key, true);
+            keep.push(block);
+          }
+        } else {
+          keep.push(block);
+        }
+      }
+      setTimeBlocks(keep);
+      // Clean up duplicates from database in background
+      if (dupeIds.length > 0) {
+        logger.info(`Cleaning up ${dupeIds.length} duplicate time blocks`);
+        for (const dupeId of dupeIds) {
+          supabase.from("time_blocks").delete().eq("id", dupeId).then(({ error }) => {
+            if (error) logger.error("Failed to delete duplicate block:", error);
+          });
+        }
+      }
     }
     if (dbWorkspaces) {
       setWorkspaces(dbWorkspaces.map(w => ({
