@@ -544,12 +544,35 @@ export default function App() {
   };
 
   const toggleTask = (id) => {
-    setTasks(ts => ts.map(t => {
-      if (t.id !== id) return t;
-      const newDone = !t.done;
-      if (newDone) { addXp(25); setTotalTasksDone(d => d + 1); flash("Task complete! +25 XP"); }
-      return { ...t, done: newDone };
-    }));
+    const task = tasks.find(t => t.id === id);
+    if (!task) return;
+    const newDone = !task.done;
+    if (newDone) { addXp(25); setTotalTasksDone(d => d + 1); flash("Task complete! +25 XP"); }
+    setTasks(ts => ts.map(t => t.id === id ? { ...t, done: newDone } : t));
+    // Persist to DB
+    supabase.from("tasks").update({ done: newDone }).eq("id", id);
+    // Sync to Apple if linked
+    if (task.externalId) {
+      supabase.functions.invoke("caldav-item", {
+        body: { action: "update-todo", href: task.caldav_href, uid: task.externalId,
+          title: task.title, done: newDone, priority: task.priority,
+          description: task.description, etag: task.caldav_etag },
+      }).catch(() => {});
+    }
+  };
+
+  const deleteTask = (id) => {
+    const task = tasks.find(t => t.id === id);
+    setTasks(ts => ts.filter(t => t.id !== id));
+    // Remove from DB
+    supabase.from("tasks").delete().eq("id", id);
+    // Delete from Apple if linked
+    if (task?.caldav_href) {
+      supabase.functions.invoke("caldav-item", {
+        body: { action: "delete", href: task.caldav_href, etag: task.caldav_etag },
+      }).catch(() => {});
+    }
+    flash("Task deleted.");
   };
 
   const toggleSubtask = (taskId, subId) => {
@@ -567,11 +590,19 @@ export default function App() {
   const createTask = () => {
     if (!newTaskTitle.trim()) return;
     const id = "t" + Date.now();
-    setTasks(ts => [...ts, {
+    const newTask = {
       id, title: newTaskTitle, desc: newTaskDesc, priority: newTaskPriority,
       wsId: newTaskWs, dueTime: null, dueDate: null, done: false, section: "afternoon",
       subtasks: [], notes: [], attachments: [], totalPomos: 2, donePomos: 0, reward: null,
-    }]);
+    };
+    setTasks(ts => [...ts, newTask]);
+    // Persist to DB
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) supabase.from("tasks").insert({
+        id, user_id: user.id, title: newTaskTitle, description: newTaskDesc,
+        priority: newTaskPriority, done: false, section: "afternoon",
+      });
+    });
     setNewTaskTitle(""); setNewTaskDesc(""); setShowNewTask(false);
     flash("Task created!");
   };
@@ -1679,6 +1710,36 @@ export default function App() {
     }
   };
 
+  const loadFromSupabase = async () => {
+    const { data: dbBlocks } = await supabase.from("time_blocks").select("*").eq("user_id", (await supabase.auth.getUser()).data.user.id);
+    if (dbBlocks?.length) {
+      setTimeBlocks(prev => {
+        const existingIds = new Set(prev.map(b => b.id));
+        const newBlocks = dbBlocks.filter(b => !existingIds.has(b.id)).map(b => ({
+          id: b.id, title: b.title, startHour: b.start_hour, endHour: b.end_hour,
+          taskId: null, color: b.color || "#5B8DEF", type: b.type || "work",
+          date: b.block_date, externalId: b.external_id,
+        }));
+        return [...prev, ...newBlocks];
+      });
+    }
+    const { data: dbTasks } = await supabase.from("tasks").select("*").eq("user_id", (await supabase.auth.getUser()).data.user.id);
+    if (dbTasks?.length) {
+      setTasks(prev => {
+        const existingIds = new Set(prev.map(t => t.id));
+        const newTasks = dbTasks.filter(t => !existingIds.has(t.id)).map(t => ({
+          id: t.id, title: t.title, desc: t.description || "",
+          description: t.description || "",
+          priority: t.priority || "medium", done: t.done || false,
+          dueDate: t.due_date, dueTime: t.due_time, section: t.section || "afternoon",
+          externalId: t.external_id, caldav_href: t.caldav_href, caldav_etag: t.caldav_etag,
+          subtasks: [], donePomos: 0, totalPomos: 0, wsId: null, tags: [],
+        }));
+        return [...prev, ...newTasks];
+      });
+    }
+  };
+
   const syncAll = async () => {
     setSyncStatus("syncing");
     setSyncError(null);
@@ -1694,6 +1755,7 @@ export default function App() {
         setSyncError(errors.join("; "));
         setSyncStatus("error");
       } else {
+        await loadFromSupabase();
         setSyncStatus("success");
         setLastSyncAt(new Date().toISOString());
         flash("Sync complete!");
@@ -1704,7 +1766,7 @@ export default function App() {
     }
   };
 
-  useEffect(() => { fetchAppleStatus(); fetchProfile(); }, []);
+  useEffect(() => { fetchAppleStatus(); fetchProfile(); loadFromSupabase(); }, []);
 
   // ─── RENDER SETTINGS ───
 
@@ -1859,6 +1921,7 @@ export default function App() {
                     <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>Sync Reminders From</label>
                     <select value={selectedRemindersId} onChange={e => setSelectedRemindersId(e.target.value)} style={{ ...inputStyle, cursor:"pointer" }}>
                       <option value="">Select a list...</option>
+                      <option value="all">All Lists</option>
                       {appleReminderLists.map(c => <option key={c.id} value={c.href}>{c.name}</option>)}
                     </select>
                   </div>

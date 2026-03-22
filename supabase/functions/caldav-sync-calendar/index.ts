@@ -27,7 +27,7 @@ serve(async (req: Request) => {
     if (!creds?.selected_calendar_id) {
       return new Response(
         JSON.stringify({ error: "No calendar selected" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -169,8 +169,8 @@ serve(async (req: Request) => {
   } catch (e) {
     console.error("caldav-sync-calendar error:", e);
     return new Response(
-      JSON.stringify({ error: "An internal error occurred" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      JSON.stringify({ error: "Calendar sync failed: " + String(e) }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });

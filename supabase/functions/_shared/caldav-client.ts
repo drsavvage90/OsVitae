@@ -73,10 +73,11 @@ export async function discoverPrincipal(
   const match = res.text.match(/current-user-principal[\s\S]*?<[^>]*href[^>]*>([^<]+)</i);
   if (!match) throw new Error("Could not discover principal URL. Response: " + res.text.slice(0, 500));
 
-  const principalPath = match[1];
-  // Use the final URL after redirects (e.g. pXX-caldav.icloud.com) as the base
+  const principalHref = match[1].trim();
+  // If Apple returned a full URL, use it directly; otherwise prepend the redirect base
+  if (principalHref.startsWith("http")) return principalHref;
   const redirectBase = new URL(res.finalUrl).origin;
-  return redirectBase + principalPath;
+  return redirectBase + principalHref;
 }
 
 export async function discoverCalendarHome(
@@ -94,13 +95,13 @@ export async function discoverCalendarHome(
   const res = await caldavRequest(principalUrl, "PROPFIND", body, appleId, password, "0");
   if (res.status >= 400) throw new Error(`CalDAV home discovery failed (${res.status})`);
 
-  const match = res.text.match(/<cal:calendar-home-set>[\s\S]*?<d:href>([^<]+)<\/d:href>/i)
-    || res.text.match(/<C:calendar-home-set>[\s\S]*?<D:href>([^<]+)<\/D:href>/i)
-    || res.text.match(/<calendar-home-set[^>]*>[\s\S]*?<href[^>]*>([^<]+)<\/href>/i);
+  const match = res.text.match(/calendar-home-set[\s\S]*?<(?:[a-zA-Z]+:)?href[^>]*>([^<]+)/i);
   if (!match) throw new Error("Could not discover calendar home set");
 
+  const homeHref = match[1].trim();
+  if (homeHref.startsWith("http")) return homeHref;
   const base = new URL(principalUrl).origin;
-  return base + match[1];
+  return base + homeHref;
 }
 
 export interface CalendarInfo {
@@ -129,30 +130,44 @@ export async function listCalendars(
   const res = await caldavRequest(homeSetUrl, "PROPFIND", body, appleId, password, "1");
   if (res.status >= 400) throw new Error(`Calendar list failed (${res.status})`);
 
+  console.log("[CalDAV] listCalendars raw XML (first 2000):", res.text.slice(0, 2000));
+
   const calendars: CalendarInfo[] = [];
-  const responses = res.text.split(/<d:response>|<D:response>/i).slice(1);
+  // Split on <response> with any namespace prefix (or none)
+  const responses = res.text.split(/<(?:[a-zA-Z]+:)?response(?:\s[^>]*)?>/i).slice(1);
 
   for (const resp of responses) {
-    const hrefMatch = resp.match(/<d:href>([^<]+)<\/d:href>/i) || resp.match(/<D:href>([^<]+)<\/D:href>/i);
+    // Match href with any namespace prefix
+    const hrefMatch = resp.match(/<(?:[a-zA-Z]+:)?href>([^<]+)<\/(?:[a-zA-Z]+:)?href>/i);
     if (!hrefMatch) continue;
 
     const href = hrefMatch[1];
-    const isCalendar = /<d:resourcetype>[\s\S]*?<c:calendar\s*\/?>|<d:resourcetype>[\s\S]*?<cal:calendar/i.test(resp);
+    // Match resourcetype containing calendar element with any prefix
+    const isCalendar = /resourcetype[\s\S]*?calendar/i.test(resp);
     if (!isCalendar) continue;
 
-    const nameMatch = resp.match(/<d:displayname>([^<]*)<\/d:displayname>/i) || resp.match(/<D:displayname>([^<]*)<\/D:displayname>/i);
-    const name = nameMatch ? nameMatch[1] : "Untitled";
+    const nameMatch = resp.match(/displayname[^>]*>([\s\S]*?)<\/(?:[a-zA-Z]+:)?displayname>/i);
+    const name = nameMatch ? nameMatch[1].trim() || "Untitled" : "Untitled";
 
-    const colorMatch = resp.match(/<ic:calendar-color>([^<]*)<\/ic:calendar-color>/i);
+    const colorMatch = resp.match(/calendar-color[^>]*>([^<]*)</i);
     const color = colorMatch ? colorMatch[1] : undefined;
 
     const supportsVEVENT = /VEVENT/i.test(resp);
     const supportsVTODO = /VTODO/i.test(resp);
+    const hasComponentSet = /supported-calendar-component-set/i.test(resp);
+
+    console.log(`[CalDAV] found: ${name}, VEVENT=${supportsVEVENT}, VTODO=${supportsVTODO}, hasComponentSet=${hasComponentSet}, href=${href}`);
 
     const base = new URL(homeSetUrl).origin;
     const fullHref = href.startsWith("http") ? href : base + href;
 
-    if (supportsVTODO && !supportsVEVENT) {
+    // If no component set declared, assume reminders (Apple calendars always declare VEVENT)
+    if (!hasComponentSet) {
+      calendars.push({ id: href, name, href: fullHref, type: "reminders", color });
+    } else if (supportsVTODO && supportsVEVENT) {
+      calendars.push({ id: href, name, href: fullHref, type: "calendar", color });
+      calendars.push({ id: href, name, href: fullHref, type: "reminders", color });
+    } else if (supportsVTODO) {
       calendars.push({ id: href, name, href: fullHref, type: "reminders", color });
     } else if (supportsVEVENT) {
       calendars.push({ id: href, name, href: fullHref, type: "calendar", color });
@@ -224,15 +239,13 @@ export async function fetchTodos(
 
 function parseMultigetResponse(xml: string, baseUrl: string): CalDAVItem[] {
   const items: CalDAVItem[] = [];
-  const responses = xml.split(/<d:response>|<D:response>/i).slice(1);
+  const responses = xml.split(/<(?:[a-zA-Z]+:)?response(?:\s[^>]*)?>/i).slice(1);
   const origin = new URL(baseUrl).origin;
 
   for (const resp of responses) {
-    const hrefMatch = resp.match(/<d:href>([^<]+)<\/d:href>/i) || resp.match(/<D:href>([^<]+)<\/D:href>/i);
-    const etagMatch = resp.match(/<d:getetag>"?([^"<]+)"?<\/d:getetag>/i) || resp.match(/<D:getetag>"?([^"<]+)"?<\/D:getetag>/i);
-    const dataMatch = resp.match(/<c:calendar-data[^>]*>([\s\S]*?)<\/c:calendar-data>/i)
-      || resp.match(/<cal:calendar-data[^>]*>([\s\S]*?)<\/cal:calendar-data>/i)
-      || resp.match(/<C:calendar-data[^>]*>([\s\S]*?)<\/C:calendar-data>/i);
+    const hrefMatch = resp.match(/<(?:[a-zA-Z]+:)?href>([^<]+)<\/(?:[a-zA-Z]+:)?href>/i);
+    const etagMatch = resp.match(/getetag[^>]*>"?([^"<]+)"?<\//i);
+    const dataMatch = resp.match(/calendar-data[^>]*>([\s\S]*?)<\/(?:[a-zA-Z]+:)?calendar-data>/i);
 
     if (hrefMatch && etagMatch && dataMatch) {
       const href = hrefMatch[1].startsWith("http") ? hrefMatch[1] : origin + hrefMatch[1];

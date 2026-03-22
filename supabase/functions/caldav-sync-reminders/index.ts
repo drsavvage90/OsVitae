@@ -7,6 +7,7 @@ import {
   parseVTodo,
   buildVTodo,
   putEvent,
+  listCalendars,
   icalPriorityToApp,
   appPriorityToIcal,
 } from "../_shared/caldav-client.ts";
@@ -27,15 +28,31 @@ serve(async (req: Request) => {
     if (!creds?.selected_reminders_id) {
       return new Response(
         JSON.stringify({ error: "No reminder list selected" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     const password = await decrypt(creds.app_password_encrypted);
-    const reminderListUrl = creds.selected_reminders_id;
 
-    // Fetch remote todos
-    const remoteTodos = await fetchTodos(reminderListUrl, creds.apple_id, password);
+    // If "all", fetch from every reminder list; otherwise just the selected one
+    let reminderListUrls: string[];
+    if (creds.selected_reminders_id === "all") {
+      const allCals = await listCalendars(creds.calendar_home_set, creds.apple_id, password);
+      reminderListUrls = allCals.filter(c => c.type === "reminders").map(c => c.href);
+    } else {
+      reminderListUrls = [creds.selected_reminders_id];
+    }
+
+    // Fetch remote todos from all selected lists
+    const remoteTodos: Awaited<ReturnType<typeof fetchTodos>> = [];
+    for (const url of reminderListUrls) {
+      try {
+        const todos = await fetchTodos(url, creds.apple_id, password);
+        remoteTodos.push(...todos);
+      } catch (e) {
+        console.log(`[CalDAV] skipping list ${url}: ${e}`);
+      }
+    }
 
     // Fetch local tasks
     const { data: localTasks } = await supabase
@@ -149,7 +166,8 @@ serve(async (req: Request) => {
         completed: task.done,
       });
 
-      const href = reminderListUrl.replace(/\/$/, "") + "/" + uid + ".ics";
+      const pushUrl = reminderListUrls[0];
+      const href = pushUrl.replace(/\/$/, "") + "/" + uid + ".ics";
 
       try {
         const result = await putEvent(href, ical, creds.apple_id, password);
@@ -188,8 +206,8 @@ serve(async (req: Request) => {
   } catch (e) {
     console.error("caldav-sync-reminders error:", e);
     return new Response(
-      JSON.stringify({ error: "An internal error occurred" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      JSON.stringify({ error: "Reminders sync failed: " + String(e) }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });

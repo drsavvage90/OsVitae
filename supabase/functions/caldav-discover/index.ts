@@ -20,7 +20,7 @@ serve(async (req: Request) => {
     if (!creds) {
       return new Response(
         JSON.stringify({ error: "Apple Calendar not connected" }),
-        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -37,8 +37,8 @@ serve(async (req: Request) => {
   } catch (e) {
     console.error("caldav-discover error:", e);
     return new Response(
-      JSON.stringify({ error: "An internal error occurred" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      JSON.stringify({ error: "Discover failed: " + String(e) }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });
