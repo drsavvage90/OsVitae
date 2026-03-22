@@ -325,6 +325,9 @@ export default function App() {
   const deleteTask = async (id) => {
     const task = tasks.find(t => t.id === id);
     setTasks(ts => ts.filter(t => t.id !== id));
+    // Also remove any associated time blocks from the calendar
+    setTimeBlocks(bs => bs.filter(b => b.taskId !== id));
+    await supabase.from("time_blocks").delete().eq("task_id", id);
     const { error } = await supabase.from("tasks").delete().eq("id", id);
     if (error) {
       logger.error("Failed to delete task:", error);
