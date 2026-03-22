@@ -5,5 +5,82 @@ body,
   padding: 0;
   width: 100%;
   height: 100%;
+  height: 100dvh; /* Dynamic viewport height — accounts for iOS Safari chrome */
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  touch-action: manipulation;
+  overscroll-behavior: none; /* Prevent pull-to-refresh / bounce on PWA */
+}
+
+/* ── Touch device improvements ── */
+@media (pointer: coarse) {
+  /* Apple HIG: 44pt minimum touch targets */
+  button, [role="button"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Disable hover transforms on touch — prevents stuck states */
+  @media (hover: none) {
+    *:hover {
+      transform: none !important;
+    }
+  }
+
+  /* 16px font-size prevents iOS auto-zoom on input focus */
+  input, textarea, select {
+    font-size: 16px !important;
+    min-height: 44px;
+    padding: 12px 14px !important;
+  }
+
+  textarea {
+    min-height: 80px;
+  }
+
+  /* Momentum scrolling */
+  .main-content {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+  }
+}
+
+/* ── iPhone-specific (≤430px, pointer: coarse) ── */
+@media (max-width: 430px) and (pointer: coarse) {
+  /* Tighter padding on phone inputs */
+  input, textarea, select {
+    padding: 10px 12px !important;
+    border-radius: 10px;
+  }
+
+  /* Ensure buttons don't overflow on narrow screens */
+  button {
+    min-width: 36px;
+    min-height: 36px;
+    font-size: 13px;
+  }
+}
+
+/* ── iPad mini + iPad (601px–1366px, touch) ── */
+@media (min-width: 601px) and (max-width: 1366px) and (pointer: coarse) {
+  .stats-grid {
+    grid-template-columns: 1fr 1fr !important;
+  }
+}
+
+/* ── Safe area insets for notch / home indicator / Dynamic Island ── */
+@supports (padding: env(safe-area-inset-bottom)) {
+  body {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* ── Standalone PWA: adjust for status bar ── */
+@media all and (display-mode: standalone) {
+  body {
+    padding-top: env(safe-area-inset-top);
+  }
 }
