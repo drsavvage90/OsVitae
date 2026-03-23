@@ -772,10 +772,12 @@ export default function App() {
 
   const fetchProfile = async () => {
     try {
-      const { data, error } = await supabase.functions.invoke("profile", {
+      const resp = await supabase.functions.invoke("profile", {
         body: { action: "read" },
       });
-      if (error) return;
+      const data = resp?.data;
+      const error = resp?.error;
+      if (error) { logger.warn("Profile fetch error:", error); return; }
       if (data) {
         setProfileData({
           full_name: data.full_name || "",
