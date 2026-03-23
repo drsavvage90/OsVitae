@@ -57,6 +57,15 @@ export default function App() {
     setThemeName(next);
     localStorage.setItem("osvitae-theme", next);
   };
+  // Calculate pomos from start/end time: 1 pomo per 30 min, minimum 1
+  const pomosFromTimes = (start, end) => {
+    if (!start || !end) return null;
+    const [sh, sm] = start.split(":").map(Number);
+    const [eh, em] = end.split(":").map(Number);
+    const mins = (eh * 60 + em) - (sh * 60 + sm);
+    if (mins <= 0) return null;
+    return Math.max(1, Math.round(mins / 30));
+  };
   const [sidebarSections, setSidebarSections] = useState({ home: true, track: false, library: false, workspaces: false });
   const [tasks, setTasks] = useState(INIT_TASKS);
   const [xp, setXp] = useState(0);
@@ -1368,11 +1377,11 @@ export default function App() {
           </div>
           <div style={{ flex:1 }}>
             <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>Start Time</label>
-            <input type="time" value={newTaskDueTime} onChange={e => setNewTaskDueTime(e.target.value)} style={inputStyle} />
+            <input type="time" value={newTaskDueTime} onChange={e => { setNewTaskDueTime(e.target.value); const p = pomosFromTimes(e.target.value, newTaskEndTime); if (p) setNewTaskPomos(p); }} style={inputStyle} />
           </div>
           <div style={{ flex:1 }}>
             <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>End Time</label>
-            <input type="time" value={newTaskEndTime} onChange={e => setNewTaskEndTime(e.target.value)} style={inputStyle} />
+            <input type="time" value={newTaskEndTime} onChange={e => { setNewTaskEndTime(e.target.value); const p = pomosFromTimes(newTaskDueTime, e.target.value); if (p) setNewTaskPomos(p); }} style={inputStyle} />
           </div>
         </div>
         <div style={{ display:"flex",gap:14,marginBottom:14 }}>
@@ -1505,11 +1514,11 @@ export default function App() {
           </div>
           <div style={{ flex:1 }}>
             <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>Start Time</label>
-            <input type="time" value={editingTask.dueTime || ""} onChange={e => setEditingTask({ ...editingTask, dueTime: e.target.value })} style={inputStyle} />
+            <input type="time" value={editingTask.dueTime || ""} onChange={e => { const p = pomosFromTimes(e.target.value, editingTask.endTime); setEditingTask({ ...editingTask, dueTime: e.target.value, ...(p ? { totalPomos: p } : {}) }); }} style={inputStyle} />
           </div>
           <div style={{ flex:1 }}>
             <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>End Time</label>
-            <input type="time" value={editingTask.endTime || ""} onChange={e => setEditingTask({ ...editingTask, endTime: e.target.value })} style={inputStyle} />
+            <input type="time" value={editingTask.endTime || ""} onChange={e => { const p = pomosFromTimes(editingTask.dueTime, e.target.value); setEditingTask({ ...editingTask, endTime: e.target.value, ...(p ? { totalPomos: p } : {}) }); }} style={inputStyle} />
           </div>
         </div>
         <div style={{ display:"flex",gap:14,marginBottom:14 }}>
