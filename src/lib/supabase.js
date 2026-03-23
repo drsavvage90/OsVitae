@@ -18,3 +18,14 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     detectSessionInUrl: true,
   },
 })
+
+/** Invoke an edge function with an explicit auth header to avoid 401s */
+export const invokeFunction = async (name, options = {}) => {
+  const { data: { session } } = await supabase.auth.getSession()
+  const token = session?.access_token
+  if (!token) throw new Error('Not authenticated')
+  return supabase.functions.invoke(name, {
+    ...options,
+    headers: { ...options.headers, Authorization: `Bearer ${token}` },
+  })
+}

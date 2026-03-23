@@ -5,7 +5,7 @@ import {
   Search, Clock, CheckCircle2, ArrowLeft, Plus, X,
   RefreshCw, Inbox, Trash2, ChevronRight, Menu,
 } from "lucide-react";
-import { supabase } from "./lib/supabase";
+import { supabase, invokeFunction } from "./lib/supabase";
 import {
   THEMES, WS_ICON_OPTIONS, WS_COLOR_OPTIONS, getWsIcon,
   FINANCE_CATEGORIES,
@@ -286,7 +286,7 @@ export default function App() {
       return;
     }
     if (task.externalId) {
-      supabase.functions.invoke("caldav-item", {
+      invokeFunction("caldav-item", {
         body: { action: "update-todo", href: task.caldav_href, uid: task.externalId,
           title: task.title, done: newDone, priority: task.priority,
           description: task.description, etag: task.caldav_etag },
@@ -336,7 +336,7 @@ export default function App() {
       return;
     }
     if (task?.caldav_href) {
-      supabase.functions.invoke("caldav-item", {
+      invokeFunction("caldav-item", {
         body: { action: "delete", href: task.caldav_href, etag: task.caldav_etag },
       }).catch(e => logger.warn("CalDAV delete skipped:", e.message));
     }
@@ -772,7 +772,7 @@ export default function App() {
 
   const fetchProfile = async () => {
     try {
-      const resp = await supabase.functions.invoke("profile", {
+      const resp = await invokeFunction("profile", {
         body: { action: "read" },
       });
       const data = resp?.data;
@@ -803,7 +803,7 @@ export default function App() {
     if (!phoneCheck.valid) { flash(phoneCheck.error); return; }
     setProfileSaving(true);
     try {
-      const resp = await supabase.functions.invoke("profile", {
+      const resp = await invokeFunction("profile", {
         body: {
           action: "write",
           full_name: sanitizeText(profileData.full_name, MAX_NAME) || null,
@@ -833,7 +833,7 @@ export default function App() {
   const exportData = async () => {
     setExporting(true);
     try {
-      const { data, error } = await supabase.functions.invoke("export-data", {
+      const { data, error } = await invokeFunction("export-data", {
         body: {},
       });
       if (error) throw error;
@@ -856,7 +856,7 @@ export default function App() {
   const deleteAccount = async () => {
     setDeleting(true);
     try {
-      const { data, error } = await supabase.functions.invoke("delete-account", {
+      const { data, error } = await invokeFunction("delete-account", {
         body: { confirm: true },
       });
       if (error) throw error;
@@ -876,7 +876,7 @@ export default function App() {
 
   const fetchAppleStatus = async () => {
     try {
-      const { data, error } = await supabase.functions.invoke("apple-credentials", {
+      const { data, error } = await invokeFunction("apple-credentials", {
         body: { action: "status" },
       });
       if (error) return;
@@ -887,7 +887,7 @@ export default function App() {
         setSelectedRemindersId(data.selected_reminders_id || "");
         // Load calendar lists so dropdowns work on any device
         try {
-          const { data: discData } = await supabase.functions.invoke("caldav-discover", { body: {} });
+          const { data: discData } = await invokeFunction("caldav-discover", { body: {} });
           if (discData?.calendars) setAppleCalendars(discData.calendars || []);
           if (discData?.reminderLists) setAppleReminderLists(discData.reminderLists || []);
         } catch (_discErr) { /* calendar list load is best-effort */ }
@@ -900,7 +900,7 @@ export default function App() {
     setAppleConnecting(true);
     setSyncError(null);
     try {
-      const { data, error } = await supabase.functions.invoke("apple-credentials", {
+      const { data, error } = await invokeFunction("apple-credentials", {
         body: { action: "connect", apple_id: appleIdInput, app_password: appleAppPassword },
       });
       if (error) throw new Error(error.message);
@@ -921,7 +921,7 @@ export default function App() {
   };
 
   const disconnectApple = async () => {
-    const { error } = await supabase.functions.invoke("apple-credentials", {
+    const { error } = await invokeFunction("apple-credentials", {
       body: { action: "disconnect" },
     });
     if (error) {
@@ -939,7 +939,7 @@ export default function App() {
   };
 
   const saveCalendarSelection = async () => {
-    const { error } = await supabase.functions.invoke("apple-credentials", {
+    const { error } = await invokeFunction("apple-credentials", {
       body: { action: "update", selected_calendar_id: selectedCalendarId },
     });
     if (error) {
@@ -953,7 +953,7 @@ export default function App() {
   const rediscoverCalendars = async () => {
     setSyncError(null);
     try {
-      const { data, error } = await supabase.functions.invoke("caldav-discover", {
+      const { data, error } = await invokeFunction("caldav-discover", {
         body: {},
       });
       if (error) throw new Error(error.message);
@@ -1174,7 +1174,7 @@ export default function App() {
     setSyncError(null);
     try {
       const [calRes] = await Promise.allSettled([
-        supabase.functions.invoke("caldav-sync-calendar", { body: {} }),
+        invokeFunction("caldav-sync-calendar", { body: {} }),
       ]);
       const errors = [calRes]
         .filter(r => r.status === "rejected" || r.value?.data?.error)
