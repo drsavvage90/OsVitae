@@ -1,0 +1,23 @@
+[functions.profile]
+verify_jwt = false
+
+[functions.apple-credentials]
+verify_jwt = false
+
+[functions.caldav-discover]
+verify_jwt = false
+
+[functions.caldav-sync-calendar]
+verify_jwt = false
+
+[functions.caldav-sync-reminders]
+verify_jwt = false
+
+[functions.caldav-item]
+verify_jwt = false
+
+[functions.export-data]
+verify_jwt = false
+
+[functions.delete-account]
+verify_jwt = false

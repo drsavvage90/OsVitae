@@ -887,9 +887,9 @@ export default function App() {
         setSelectedRemindersId(data.selected_reminders_id || "");
         // Load calendar lists so dropdowns work on any device
         try {
-          const { data: discData } = await invokeFunction("caldav-discover", { body: {} });
-          if (discData?.calendars) setAppleCalendars(discData.calendars || []);
-          if (discData?.reminderLists) setAppleReminderLists(discData.reminderLists || []);
+          const { data: discData, error: discErr } = await invokeFunction("caldav-discover", { body: {} });
+          if (!discErr && discData?.calendars) setAppleCalendars(discData.calendars || []);
+          if (!discErr && discData?.reminderLists) setAppleReminderLists(discData.reminderLists || []);
         } catch (_discErr) { /* calendar list load is best-effort */ }
       }
     } catch (_e) { /* not connected */ }
@@ -1197,14 +1197,23 @@ export default function App() {
   };
 
   useEffect(() => {
-    // Load data once auth is fully ready (token refreshed if needed)
+    let edgeFunctionsLoaded = false;
+    const loadEdgeFunctions = () => {
+      if (edgeFunctionsLoaded) return;
+      edgeFunctionsLoaded = true;
+      fetchAppleStatus();
+      fetchProfile();
+    };
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session) {
-        fetchAppleStatus();
-        fetchProfile();
-        loadFromSupabase();
-        // Only need the first valid session event
-        subscription.unsubscribe();
+      if (!session) return;
+      // Always load DB data on any session event
+      loadFromSupabase();
+      // Only call edge functions after token is confirmed fresh
+      if (event === 'TOKEN_REFRESHED' || event === 'SIGNED_IN') {
+        loadEdgeFunctions();
+      } else if (event === 'INITIAL_SESSION') {
+        // Token might be expired — refresh first, then load
+        supabase.auth.refreshSession().then(() => loadEdgeFunctions());
       }
     });
     return () => subscription.unsubscribe();
