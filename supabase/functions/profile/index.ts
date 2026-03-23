@@ -5,7 +5,7 @@ import { encryptFields, decryptFields } from "../_shared/crypto.ts";
 import { errorResponse } from "../_shared/errors.ts";
 
 const PII_FIELDS = [
-  "full_name", "date_of_birth", "phone", "email",
+  "preferred_name",
   "address_line1", "address_line2", "city", "state", "zip", "country",
 ] as const;
 
@@ -49,20 +49,6 @@ serve(async (req: Request) => {
       for (const f of PII_FIELDS) {
         const v = body[f];
         plaintext[f] = typeof v === "string" && v.trim() ? v.trim() : null;
-      }
-
-      // Server-side validation
-      if (plaintext.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(plaintext.email)) {
-        return new Response(
-          JSON.stringify({ error: "Invalid email address." }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      if (plaintext.phone && !/^[+\d\s()./-]{0,30}$/.test(plaintext.phone)) {
-        return new Response(
-          JSON.stringify({ error: "Invalid phone number." }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
       }
 
       // Truncate fields

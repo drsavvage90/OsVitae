@@ -55,7 +55,9 @@ serve(async (req: Request) => {
     const dateTo = to.toISOString().slice(0, 10).replace(/-/g, "");
 
     // Fetch remote events
+    console.log(`[Calendar sync] Fetching events from ${calendarUrl} range ${dateFrom}-${dateTo}`);
     const remoteEvents = await fetchEvents(calendarUrl, appleId, password, dateFrom, dateTo);
+    console.log(`[Calendar sync] Found ${remoteEvents.length} remote events`);
 
     // Fetch local time_blocks
     const fromDate = from.toISOString().slice(0, 10);

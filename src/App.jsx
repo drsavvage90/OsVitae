@@ -14,7 +14,7 @@ import {
 import { Glass, Btn, Modal, Toast } from "./components/ui";
 import { getUserId } from "./lib/getUserId";
 import { logger } from "./lib/logger";
-import { validateTitle, validateDescription, validateName, validateAmount, validateEmail, validatePhone, sanitizeText, MAX_TITLE, MAX_DESC, MAX_NAME } from "./lib/validate";
+import { validateTitle, validateDescription, validateName, validateAmount, sanitizeText, MAX_TITLE, MAX_DESC, MAX_NAME } from "./lib/validate";
 import { useFlash } from "./hooks/useFlash";
 import { useHabits, daysForFrequency } from "./hooks/useHabits";
 import { useInbox } from "./hooks/useInbox";
