@@ -19,13 +19,22 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   },
 })
 
-/** Invoke an edge function with an explicit auth header to avoid 401s */
+/** Invoke an edge function with a fresh auth token */
 export const invokeFunction = async (name, options = {}) => {
-  const { data: { session } } = await supabase.auth.getSession()
-  const token = session?.access_token
-  if (!token) throw new Error('Not authenticated')
+  // Force token refresh to avoid expired-token 401s
+  const { data: { session }, error } = await supabase.auth.refreshSession()
+  if (error || !session) {
+    // Fallback: try cached session
+    const cached = await supabase.auth.getSession()
+    const token = cached.data?.session?.access_token
+    if (!token) throw new Error('Not authenticated')
+    return supabase.functions.invoke(name, {
+      ...options,
+      headers: { ...options.headers, Authorization: `Bearer ${token}` },
+    })
+  }
   return supabase.functions.invoke(name, {
     ...options,
-    headers: { ...options.headers, Authorization: `Bearer ${token}` },
+    headers: { ...options.headers, Authorization: `Bearer ${session.access_token}` },
   })
 }
