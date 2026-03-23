@@ -563,21 +563,28 @@ export default function App() {
   const createTimeBlockFromTask = async ({ taskId, title, color, startHour }) => {
     const blockDate = new Date().toISOString().split("T")[0];
     const endHour = startHour + 1;
-    // Use functional updater to atomically check-and-insert against latest state
+    // Check local state first
     let alreadyExists = false;
     let id;
     setTimeBlocks(prev => {
       if (prev.some(b => b.taskId === taskId && b.date === blockDate)) {
         alreadyExists = true;
-        return prev; // no change
+        return prev;
       }
       id = crypto.randomUUID();
       return [...prev, { id, title, startHour, endHour, taskId, color: color || "#5B8DEF", type: "work", date: blockDate }];
     });
     if (alreadyExists) return;
-    flash("Task added to calendar!");
     const userId = await getUserId();
     if (!userId) return;
+    // Check DB for existing block (local state may not be loaded yet)
+    const { data: existing } = await supabase.from("time_blocks")
+      .select("id").eq("task_id", taskId).eq("block_date", blockDate).limit(1);
+    if (existing && existing.length > 0) {
+      setTimeBlocks(prev => prev.filter(b => b.id !== id));
+      return;
+    }
+    flash("Task added to calendar!");
     const { error } = await supabase.from("time_blocks").insert({
       id, user_id: userId, title, start_hour: startHour,
       end_hour: endHour, block_date: blockDate, color: color || "#5B8DEF", type: "work", task_id: taskId
