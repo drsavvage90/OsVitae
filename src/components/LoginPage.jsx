@@ -5,6 +5,14 @@ import PrivacyPolicy from './PrivacyPolicy'
 
 export default function LoginPage() {
   const [showPrivacy, setShowPrivacy] = useState(false)
+  const [mode, setMode] = useState('sign_in') // 'sign_in' | 'sign_up'
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [error, setError] = useState('')
+  const [message, setMessage] = useState('')
+  const [loading, setLoading] = useState(false)
+
   const signInWithApple = async () => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'apple',
@@ -13,6 +21,56 @@ export default function LoginPage() {
       },
     })
     if (error) logger.error('Sign in error:', error.message)
+  }
+
+  const handleEmailAuth = async (e) => {
+    e.preventDefault()
+    setError('')
+    setMessage('')
+    setLoading(true)
+
+    if (mode === 'sign_up' && password !== confirmPassword) {
+      setError('Passwords do not match')
+      setLoading(false)
+      return
+    }
+
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters')
+      setLoading(false)
+      return
+    }
+
+    if (mode === 'sign_up') {
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: { emailRedirectTo: window.location.origin },
+      })
+      if (error) {
+        setError(error.message)
+      } else {
+        setMessage('Check your email for a confirmation link!')
+      }
+    } else {
+      const { error } = await supabase.auth.signInWithPassword({ email, password })
+      if (error) {
+        setError(error.message)
+      }
+    }
+    setLoading(false)
+  }
+
+  const inputStyle = {
+    width: '100%',
+    padding: '12px 14px',
+    borderRadius: 10,
+    border: '1.5px solid #E5E7EB',
+    fontSize: 15,
+    fontFamily: "'Inter', -apple-system, sans-serif",
+    outline: 'none',
+    transition: 'border-color 0.2s',
+    boxSizing: 'border-box',
   }
 
   return (
@@ -51,11 +109,97 @@ export default function LoginPage() {
           OSVitae
         </h1>
         <p style={{
-          fontSize: 14, color: '#6B7280', margin: '0 0 36px',
+          fontSize: 14, color: '#6B7280', margin: '0 0 28px',
           lineHeight: 1.5,
         }}>
           Tasks, Habits, Focus &amp; Everything In Between
         </p>
+
+        <form onSubmit={handleEmailAuth} style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 20 }}>
+          <input
+            type="email"
+            placeholder="Email"
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+            required
+            style={inputStyle}
+            onFocus={e => e.target.style.borderColor = '#6366f1'}
+            onBlur={e => e.target.style.borderColor = '#E5E7EB'}
+          />
+          <input
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={e => setPassword(e.target.value)}
+            required
+            style={inputStyle}
+            onFocus={e => e.target.style.borderColor = '#6366f1'}
+            onBlur={e => e.target.style.borderColor = '#E5E7EB'}
+          />
+          {mode === 'sign_up' && (
+            <input
+              type="password"
+              placeholder="Confirm password"
+              value={confirmPassword}
+              onChange={e => setConfirmPassword(e.target.value)}
+              required
+              style={inputStyle}
+              onFocus={e => e.target.style.borderColor = '#6366f1'}
+              onBlur={e => e.target.style.borderColor = '#E5E7EB'}
+            />
+          )}
+
+          {error && (
+            <p style={{ color: '#EF4444', fontSize: 13, margin: 0 }}>{error}</p>
+          )}
+          {message && (
+            <p style={{ color: '#10B981', fontSize: 13, margin: 0 }}>{message}</p>
+          )}
+
+          <button
+            type="submit"
+            disabled={loading}
+            style={{
+              width: '100%',
+              padding: '14px 20px',
+              borderRadius: 12,
+              border: 'none',
+              background: '#6366f1',
+              color: '#fff',
+              fontSize: 16,
+              fontWeight: 600,
+              fontFamily: "'Inter', -apple-system, sans-serif",
+              cursor: loading ? 'default' : 'pointer',
+              opacity: loading ? 0.7 : 1,
+              transition: 'opacity 0.2s',
+            }}
+            onMouseEnter={e => { if (!loading) e.currentTarget.style.opacity = '0.85' }}
+            onMouseLeave={e => { if (!loading) e.currentTarget.style.opacity = '1' }}
+          >
+            {loading ? 'Please wait...' : mode === 'sign_up' ? 'Create Account' : 'Sign In'}
+          </button>
+        </form>
+
+        <p style={{ fontSize: 13, color: '#6B7280', margin: '0 0 20px' }}>
+          {mode === 'sign_in' ? "Don't have an account? " : 'Already have an account? '}
+          <button
+            onClick={() => { setMode(mode === 'sign_in' ? 'sign_up' : 'sign_in'); setError(''); setMessage('') }}
+            style={{
+              background: 'none', border: 'none', color: '#6366f1',
+              cursor: 'pointer', fontSize: 13, fontWeight: 600, padding: 0,
+            }}
+          >
+            {mode === 'sign_in' ? 'Sign Up' : 'Sign In'}
+          </button>
+        </p>
+
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 12, margin: '0 0 20px',
+        }}>
+          <div style={{ flex: 1, height: 1, background: '#E5E7EB' }} />
+          <span style={{ fontSize: 12, color: '#9CA3AF' }}>or</span>
+          <div style={{ flex: 1, height: 1, background: '#E5E7EB' }} />
+        </div>
 
         <button
           onClick={signInWithApple}

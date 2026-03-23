@@ -690,10 +690,12 @@ export default function App() {
   const activeWs = ws.find(w => w.id === activeWsId);
   const activeTask = tasks.find(t => t.id === activeTaskId);
   const timerTask = tasks.find(t => t.id === timerTaskId);
-  const doneTasks = tasks.filter(t => t.done).length;
-  const totalTasks = tasks.length;
-  const donePomos = tasks.reduce((s, t) => s + t.donePomos, 0);
-  const totalPomos = tasks.reduce((s, t) => s + t.totalPomos, 0);
+  const todayStr = new Date().toISOString().split("T")[0];
+  const todayOnly = tasks.filter(t => t.dueDate === todayStr);
+  const doneTasks = todayOnly.filter(t => t.done).length;
+  const totalTasks = todayOnly.length;
+  const donePomos = todayOnly.reduce((s, t) => s + t.donePomos, 0);
+  const totalPomos = todayOnly.reduce((s, t) => s + t.totalPomos, 0);
   const pColors = { high: "#EF4444", medium: "#F59E0B", low: "#22C55E" };
   const hour = new Date().getHours();
   const firstName = profileData.full_name ? profileData.full_name.split(" ")[0] : "";
@@ -1264,6 +1266,7 @@ export default function App() {
         @keyframes fadeIn{from{opacity:0}to{opacity:1}}
         @keyframes scaleIn{from{opacity:0;transform:scale(0.97)}to{opacity:1;transform:scale(1)}}
         @keyframes haloGlow{0%,100%{box-shadow:0 0 8px rgba(0,209,178,0.15)}50%{box-shadow:0 0 16px rgba(0,209,178,0.3)}}
+        @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.5}}
         @keyframes orbFloat1{0%,100%{transform:translate(0,0) scale(1)}25%{transform:translate(30px,-40px) scale(1.1)}50%{transform:translate(-20px,-60px) scale(0.95)}75%{transform:translate(-40px,-20px) scale(1.05)}}
         @keyframes orbFloat2{0%,100%{transform:translate(0,0) scale(1)}25%{transform:translate(-40px,30px) scale(1.08)}50%{transform:translate(30px,50px) scale(0.92)}75%{transform:translate(50px,-10px) scale(1.03)}}
         @keyframes orbFloat3{0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(-30px,-50px) scale(1.12)}66%{transform:translate(40px,20px) scale(0.9)}}
@@ -1379,13 +1382,13 @@ export default function App() {
         <div className="mobile-sidebar-overlay" style={{ position:"fixed",inset:0,zIndex:50 }}>
           <div onClick={() => setShowMobileSidebar(false)} style={{ position:"absolute",inset:0,background:"var(--overlay-heavy)",backdropFilter:"blur(2px)" }} />
           <div className="mobile-sidebar-panel" style={{ position:"relative",width:"min(280px, calc(100vw - 60px))",height:"100%",zIndex:51,paddingTop:"env(safe-area-inset-top)",paddingBottom:"env(safe-area-inset-bottom)" }}>
-            <Sidebar collapsed={collapsed} setCollapsed={setCollapsed} page={page} setPage={setPage} themeName={themeName} toggleTheme={toggleTheme} timerActive={timerActive} timeLeft={timeLeft} fmt={fmt} inbox={inbox} ws={ws} tasks={tasks} projects={projects} activeWsId={activeWsId} activeProjectId={activeProjectId} goWs={goWs} goProject={goProject} goToday={goToday} sidebarSections={sidebarSections} setSidebarSections={setSidebarSections} setShowNewWs={setShowNewWs} setShowNewProject={setShowNewProject} setNewProjectWsId={setNewProjectWsId} setShowMobileSidebar={setShowMobileSidebar} setTimerTaskId={setTimerTaskId} />
+            <Sidebar collapsed={collapsed} setCollapsed={setCollapsed} page={page} setPage={setPage} themeName={themeName} toggleTheme={toggleTheme} timerActive={timerActive} timeLeft={timeLeft} fmt={fmt} inbox={inbox} ws={ws} tasks={tasks} projects={projects} activeWsId={activeWsId} activeProjectId={activeProjectId} goWs={goWs} goProject={goProject} goToday={goToday} sidebarSections={sidebarSections} setSidebarSections={setSidebarSections} setShowNewWs={setShowNewWs} setShowNewProject={setShowNewProject} setNewProjectWsId={setNewProjectWsId} setShowMobileSidebar={setShowMobileSidebar} setTimerTaskId={setTimerTaskId} doneTasks={doneTasks} totalTasks={totalTasks} />
           </div>
         </div>
       )}
 
       <div className="sidebar-desktop">
-        <Sidebar collapsed={collapsed} setCollapsed={setCollapsed} page={page} setPage={setPage} themeName={themeName} toggleTheme={toggleTheme} timerActive={timerActive} timeLeft={timeLeft} fmt={fmt} inbox={inbox} ws={ws} tasks={tasks} projects={projects} activeWsId={activeWsId} activeProjectId={activeProjectId} goWs={goWs} goProject={goProject} goToday={goToday} sidebarSections={sidebarSections} setSidebarSections={setSidebarSections} setShowNewWs={setShowNewWs} setShowNewProject={setShowNewProject} setNewProjectWsId={setNewProjectWsId} setShowMobileSidebar={setShowMobileSidebar} setTimerTaskId={setTimerTaskId} />
+        <Sidebar collapsed={collapsed} setCollapsed={setCollapsed} page={page} setPage={setPage} themeName={themeName} toggleTheme={toggleTheme} timerActive={timerActive} timeLeft={timeLeft} fmt={fmt} inbox={inbox} ws={ws} tasks={tasks} projects={projects} activeWsId={activeWsId} activeProjectId={activeProjectId} goWs={goWs} goProject={goProject} goToday={goToday} sidebarSections={sidebarSections} setSidebarSections={setSidebarSections} setShowNewWs={setShowNewWs} setShowNewProject={setShowNewProject} setNewProjectWsId={setNewProjectWsId} setShowMobileSidebar={setShowMobileSidebar} setTimerTaskId={setTimerTaskId} doneTasks={doneTasks} totalTasks={totalTasks} />
       </div>
 
       <div style={{ flex:1,display:"flex",flexDirection:"column",overflow:"hidden" }}>
@@ -1413,7 +1416,7 @@ export default function App() {
         </div>
 
         <div className="main-content" style={{ flex:1,overflow:"auto",padding: page === "timer" ? "28px 28px" : "24px 28px", minHeight: 0, display:"flex", flexDirection:"column" }}>
-          {page === "today" && <TodayPage greeting={greeting} totalTasks={totalTasks} doneTasks={doneTasks} totalPomos={totalPomos} donePomos={donePomos} habits={habits} toggleHabit={toggleHabit} streak={streak} themeName={themeName} timerActive={timerActive} timeLeft={timeLeft} fmt={fmt} setTimerTaskId={setTimerTaskId} setPage={setPage} tasks={tasks} ws={ws} projects={projects} goTask={goTask} TaskRow={TaskRow} inbox={inbox} intentionText={intentionText} setIntentionText={setIntentionText} editingIntention={editingIntention} setEditingIntention={setEditingIntention} setNewTaskWs={setNewTaskWs} setShowNewTask={setShowNewTask} flash={flash} inputStyle={inputStyle} timeBlocks={timeBlocks} updateTimeBlock={updateTimeBlock} setShowNewBlock={setShowNewBlock} deleteTimeBlock={deleteTimeBlock} setEditingBlock={setEditingBlock} rewardText={rewardText} setRewardText={setRewardText} editingReward={editingReward} setEditingReward={setEditingReward} createTimeBlockFromTask={createTimeBlockFromTask} />}
+          {page === "today" && <TodayPage greeting={greeting} totalTasks={totalTasks} doneTasks={doneTasks} totalPomos={totalPomos} donePomos={donePomos} habits={habits} toggleHabit={toggleHabit} streak={streak} themeName={themeName} timerActive={timerActive} timeLeft={timeLeft} fmt={fmt} setTimerTaskId={setTimerTaskId} setPage={setPage} tasks={tasks} ws={ws} projects={projects} goTask={goTask} TaskRow={TaskRow} inbox={inbox} intentionText={intentionText} setIntentionText={setIntentionText} editingIntention={editingIntention} setEditingIntention={setEditingIntention} setNewTaskWs={setNewTaskWs} setShowNewTask={setShowNewTask} flash={flash} inputStyle={inputStyle} timeBlocks={timeBlocks} updateTimeBlock={updateTimeBlock} setShowNewBlock={setShowNewBlock} deleteTimeBlock={deleteTimeBlock} setEditingBlock={setEditingBlock} rewardText={rewardText} setRewardText={setRewardText} editingReward={editingReward} setEditingReward={setEditingReward} createTimeBlockFromTask={createTimeBlockFromTask} xp={xp} level={level} />}
           {page === "workspace" && <WorkspacePage activeWs={activeWs} activeWsId={activeWsId} tasks={tasks} projects={projects} wsNotes={wsNotes} wsDocs={wsDocs} wsTab={wsTab} setWsTab={setWsTab} setNewTaskWs={setNewTaskWs} setNewTaskProject={setNewTaskProject} setShowNewTask={setShowNewTask} setShowWsNote={setShowWsNote} setShowWsDoc={setShowWsDoc} deleteWorkspace={deleteWorkspace} deleteWsNote={deleteWsNote} deleteWsDoc={deleteWsDoc} goTask={goTask} goProject={goProject} setShowNewProject={setShowNewProject} setNewProjectWsId={setNewProjectWsId} deleteProject={deleteProject} TaskRow={TaskRow} />}
           {page === "project" && <ProjectPage activeProject={activeProject} activeProjectId={activeProjectId} activeWs={activeWs} tasks={tasks} wsNotes={wsNotes} wsDocs={wsDocs} setNewTaskWs={setNewTaskWs} setNewTaskProject={setNewTaskProject} setShowNewTask={setShowNewTask} setShowWsNote={setShowWsNote} setShowWsDoc={setShowWsDoc} deleteProject={deleteProject} deleteWsNote={deleteWsNote} deleteWsDoc={deleteWsDoc} goTask={goTask} goWs={goWs} TaskRow={TaskRow} />}
           {page === "task" && <TaskDetailPage activeTask={activeTask} ws={ws} pColors={pColors} setPage={setPage} page={page} startFocus={startFocus} toggleTask={toggleTask} toggleSubtask={toggleSubtask} setEditingTask={setEditingTask} deleteTask={deleteTask} setShowNewNote={setShowNewNote} deleteTaskNote={deleteTaskNote} flash={flash} />}

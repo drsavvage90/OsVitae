@@ -5,6 +5,7 @@ import {
   ArrowLeft, Plus, ChevronDown, ChevronRight, Zap,
 } from "lucide-react";
 import { getWsIcon } from "../lib/constants";
+import { Ring } from "./ui";
 
 export default function Sidebar({
   collapsed, setCollapsed,
@@ -16,6 +17,7 @@ export default function Sidebar({
   sidebarSections, setSidebarSections,
   setShowNewWs, setShowNewProject, setNewProjectWsId,
   setShowMobileSidebar, setTimerTaskId,
+  doneTasks, totalTasks,
 }) {
   const [expandedWs, setExpandedWs] = useState({});
   const toggleWsExpand = (id) => setExpandedWs(prev => ({ ...prev, [id]: !prev[id] }));
@@ -40,8 +42,8 @@ export default function Sidebar({
       <div style={{ flex: 1, overflowY: "auto", padding: "6px 0" }}>
         {/* Home section */}
         <div style={{ padding: "8px 12px 2px" }}>
-          {!collapsed && <div style={{ fontFamily: "var(--mono)", fontSize: 9, color: "var(--muted)", textTransform: "uppercase", letterSpacing: 2, padding: "0 10px", marginBottom: 8, fontWeight: 600 }}>Home</div>}
-          {[
+          {!collapsed && <div onClick={() => setSidebarSections(s => ({ ...s, home: !s.home }))} style={{ fontFamily: "var(--mono)", fontSize: 9, color: "var(--muted)", textTransform: "uppercase", letterSpacing: 2, padding: "0 10px", marginBottom: 8, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between" }}>Home<ChevronDown size={12} style={{ transition: "transform 0.2s", transform: sidebarSections.home ? "none" : "rotate(-90deg)" }} /></div>}
+          {sidebarSections.home && [
             { icon: <Home size={18} />, label: "Today", id: "today" },
             { icon: <Inbox size={18} />, label: "Inbox", id: "inbox", badge: inbox.filter(i => !i.triaged).length },
             { icon: <Calendar size={18} />, label: "Calendar", id: "calendar" },
@@ -192,6 +194,18 @@ export default function Sidebar({
       </div>
 
       <div style={{ padding: "10px 12px", borderTop: "1px solid var(--border-light)" }}>
+        {totalTasks > 0 && (
+          <div onClick={() => { setPage("today"); setShowMobileSidebar(false); }} style={{
+            display: "flex", alignItems: "center", justifyContent: collapsed ? "center" : "flex-start",
+            gap: 10, padding: "8px 14px", borderRadius: 10, cursor: "pointer", marginBottom: 6,
+          }}>
+            <div style={{ position: "relative", width: 28, height: 28, flexShrink: 0 }}>
+              <Ring percent={(doneTasks / totalTasks) * 100} size={28} stroke={3} color="#22C55E" />
+              <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--mono)", fontSize: 7, fontWeight: 700, color: "var(--text)" }}>{Math.round((doneTasks / totalTasks) * 100)}%</div>
+            </div>
+            {!collapsed && <span style={{ fontFamily: "var(--mono)", fontSize: 10, color: "var(--muted)", fontWeight: 600 }}>{doneTasks}/{totalTasks} tasks</span>}
+          </div>
+        )}
         <div onClick={() => { setPage("settings"); setShowMobileSidebar(false); }} style={{
           display: "flex", alignItems: "center", justifyContent: collapsed ? "center" : "flex-start",
           gap: 10, padding: "8px 14px", borderRadius: 10, cursor: "pointer",

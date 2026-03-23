@@ -1,9 +1,11 @@
+import { useState } from "react";
 import { Check, Flame, Trash2, Pencil } from "lucide-react";
 import { Glass, Btn } from "../ui";
 import { getWsIcon } from "../../lib/constants";
 import { frequencyLabel, daysForFrequency } from "../../hooks/useHabits";
 
 export default function HabitsPage({ habits, setShowNewHabit, toggleHabit, deleteHabit, setEditingHabit }) {
+  const [hoveredId, setHoveredId] = useState(null);
   const today = new Date().toISOString().split("T")[0];
   const todayDow = new Date().getDay();
   const scheduledToday = habits.filter(h => {
@@ -41,7 +43,7 @@ export default function HabitsPage({ habits, setShowNewHabit, toggleHabit, delet
             return { scheduled, done };
           });
           return (
-            <Glass key={h.id} hover onClick={() => toggleHabit(h.id)} style={{ padding:18,cursor:"pointer",animation:`slideUp 0.3s ${i*0.05}s both ease-out`,border: doneToday ? `1px solid ${h.color}33` : "1px solid var(--card-border)",background: doneToday ? `${h.color}06` : "var(--card-bg)" }}>
+            <Glass key={h.id} hover onClick={() => toggleHabit(h.id)} onMouseEnter={() => setHoveredId(h.id)} onMouseLeave={() => setHoveredId(null)} style={{ padding:18,cursor:"pointer",animation:`slideUp 0.3s ${i*0.05}s both ease-out`,border: doneToday ? `1px solid ${h.color}33` : "1px solid var(--card-border)",background: doneToday ? `${h.color}06` : "var(--card-bg)" }}>
               <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12 }}>
                 <div style={{ display:"flex",alignItems:"center",gap:10 }}>
                   <div style={{ width:36,height:36,borderRadius:10,background:`${h.color}18`,display:"flex",alignItems:"center",justifyContent:"center",color:h.color }}>{getWsIcon(h.icon, 18)}</div>
@@ -67,14 +69,16 @@ export default function HabitsPage({ habits, setShowNewHabit, toggleHabit, delet
                 <div style={{ display:"flex",alignItems:"center",gap:8 }}>
                   <Flame size={12} color={h.color} />
                   <span style={{ fontFamily:"var(--mono)",fontSize:11,color:h.color,fontWeight:700 }}>{h.streak}</span>
-                  <div role="button" onClick={(e) => { e.stopPropagation(); setEditingHabit(h); }} style={{ width:28,height:28,borderRadius:7,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",color:"var(--muted)",transition:"all 0.15s" }}
-                    onMouseEnter={e => { e.currentTarget.style.color="var(--primary)"; e.currentTarget.style.background="var(--subtle-bg)"; }}
-                    onMouseLeave={e => { e.currentTarget.style.color="var(--muted)"; e.currentTarget.style.background="transparent"; }}
-                  ><Pencil size={13}/></div>
-                  <div role="button" onClick={(e) => { e.stopPropagation(); if (confirm("Delete this habit?")) deleteHabit(h.id); }} style={{ width:28,height:28,borderRadius:7,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",color:"var(--muted)",transition:"all 0.15s" }}
-                    onMouseEnter={e => { e.currentTarget.style.color="#EF4444"; e.currentTarget.style.background="rgba(239,68,68,0.08)"; }}
-                    onMouseLeave={e => { e.currentTarget.style.color="var(--muted)"; e.currentTarget.style.background="transparent"; }}
-                  ><Trash2 size={13}/></div>
+                  <div style={{ display:"flex",alignItems:"center",gap:4,opacity:hoveredId === h.id ? 1 : 0,pointerEvents:hoveredId === h.id ? "auto" : "none",transition:"opacity 0.15s" }}>
+                    <div role="button" onClick={(e) => { e.stopPropagation(); setEditingHabit(h); }} style={{ width:28,height:28,borderRadius:7,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",color:"var(--muted)",transition:"all 0.15s" }}
+                      onMouseEnter={e => { e.currentTarget.style.color="var(--primary)"; e.currentTarget.style.background="var(--subtle-bg)"; }}
+                      onMouseLeave={e => { e.currentTarget.style.color="var(--muted)"; e.currentTarget.style.background="transparent"; }}
+                    ><Pencil size={13}/></div>
+                    <div role="button" onClick={(e) => { e.stopPropagation(); if (confirm("Delete this habit?")) deleteHabit(h.id); }} style={{ width:28,height:28,borderRadius:7,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",color:"var(--muted)",transition:"all 0.15s" }}
+                      onMouseEnter={e => { e.currentTarget.style.color="#EF4444"; e.currentTarget.style.background="rgba(239,68,68,0.08)"; }}
+                      onMouseLeave={e => { e.currentTarget.style.color="var(--muted)"; e.currentTarget.style.background="transparent"; }}
+                    ><Trash2 size={13}/></div>
+                  </div>
                 </div>
               </div>
             </Glass>

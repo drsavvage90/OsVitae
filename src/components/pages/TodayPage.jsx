@@ -1,4 +1,4 @@
-import { Flame, Check, Play, ChevronRight, Inbox as InboxIcon, Sun, Sunset, Moon, AlertTriangle } from "lucide-react";
+import { Flame, Check, Play, ChevronRight, Inbox as InboxIcon, Sun, Sunset, Moon, AlertTriangle, Trophy } from "lucide-react";
 import { Glass, Ring, Btn } from "../ui";
 import { supabase } from "../../lib/supabase";
 import { getUserId } from "../../lib/getUserId";
@@ -10,15 +10,27 @@ const SECTIONS = [
   { key: "evening", label: "Evening", icon: Moon, color: "#8B5CF6" },
 ];
 
-function TodaySchedule({ tasks, TaskRow, setNewTaskWs, setShowNewTask }) {
+function TodaySchedule({ tasks, TaskRow, setNewTaskWs, setShowNewTask, rewardText }) {
   const today = new Date().toISOString().split("T")[0];
   const todayTasks = tasks.filter(t => t.dueDate === today);
+  const allDone = todayTasks.length > 0 && todayTasks.every(t => t.done);
   // Determine which section is "now"
   const hour = new Date().getHours();
   const activeSection = hour < 12 ? "morning" : hour < 17 ? "afternoon" : "evening";
 
   return (
     <div>
+      {allDone && (
+        <Glass style={{ padding:"20px 22px",marginBottom:18,border:"2px solid rgba(34,197,94,0.25)",background:"rgba(34,197,94,0.04)",textAlign:"center",animation:"scaleIn 0.3s ease" }}>
+          <div style={{ display:"flex",alignItems:"center",justifyContent:"center",gap:12,marginBottom:rewardText ? 8 : 0 }}>
+            <Trophy size={24} color="#22C55E" />
+            <span style={{ fontFamily:"var(--heading)",fontSize:18,fontWeight:800,color:"var(--text)" }}>You crushed it today!</span>
+          </div>
+          {rewardText && (
+            <div style={{ fontFamily:"var(--body)",fontSize:13,color:"var(--muted)" }}>Time for your reward: <strong style={{ color:"var(--text)" }}>{rewardText}</strong></div>
+          )}
+        </Glass>
+      )}
       <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16 }}>
         <h2 style={{ fontFamily:"var(--heading)",fontSize:20,color:"var(--text)",margin:0,fontWeight:800 }}>Today's Schedule</h2>
         <Btn primary onClick={() => { setNewTaskWs(null); setShowNewTask(true); }}>+ Task</Btn>
@@ -71,6 +83,7 @@ export default function TodayPage({
   intentionText, setIntentionText, editingIntention, setEditingIntention,
   setNewTaskWs, setShowNewTask, flash, inputStyle,
   rewardText, setRewardText, editingReward, setEditingReward,
+  xp, level,
 }) {
   return (
     <div>
@@ -80,6 +93,15 @@ export default function TodayPage({
           <p style={{ fontFamily:"var(--body)",fontSize:15,color:"var(--muted)",margin:"6px 0 0" }}>
             <strong style={{ color:"var(--text)" }}>{totalTasks - doneTasks} tasks</strong> and <strong style={{ color:"var(--text)" }}>{totalPomos - donePomos} pomodoros</strong> on your plate
           </p>
+          {level != null && (
+            <div style={{ display:"flex",alignItems:"center",gap:8,marginTop:8 }}>
+              <span style={{ fontFamily:"var(--mono)",fontSize:10,color:"var(--xp-color, var(--primary))",fontWeight:700 }}>LVL {level}</span>
+              <div style={{ flex:1,height:4,background:"var(--card-border)",borderRadius:4,overflow:"hidden" }}>
+                <div style={{ width:`${(xp/500)*100}%`,height:"100%",borderRadius:4,background:themeName === "halo" ? "linear-gradient(90deg, #FFB000, #4ADE80)" : "linear-gradient(90deg, #A78BFA, #6366F1, #818CF8)",transition:"width 0.8s" }} />
+              </div>
+              <span style={{ fontFamily:"var(--mono)",fontSize:9,color:"var(--muted)" }}>{xp}/500 XP</span>
+            </div>
+          )}
         </div>
         <div className="today-date" style={{ fontFamily:"var(--mono)",fontSize:12,color:"var(--muted)",textAlign:"right",flexShrink:0 }}>
           <div style={{ fontWeight:700,color:"var(--text)",fontSize:14 }}>{new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}</div>
@@ -88,7 +110,7 @@ export default function TodayPage({
       </div>
 
       {/* Stats */}
-      <div className="stats-grid" style={{ display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:14,marginBottom:24 }}>
+      <div className="stats-grid" style={{ display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1.4fr",gap:14,marginBottom:24 }}>
         <Glass onClick={() => setPage("allTasks")} hover style={{ padding:18,display:"flex",alignItems:"center",gap:14,cursor:"pointer" }}>
           <div style={{ position:"relative",width:48,height:48,flexShrink:0 }}>
             <Ring percent={(doneTasks/totalTasks)*100} size={48} stroke={4} color="#22C55E" />
@@ -119,14 +141,14 @@ export default function TodayPage({
           </div>
         </Glass>
         <div onClick={() => { setTimerTaskId(null); setPage("timer"); }} style={{
-          background:themeName === "halo" ? "linear-gradient(135deg, #4ADE80, #22C55E)" : "linear-gradient(135deg, #6366F1, #8B5CF6, #A855F7)",borderRadius:16,padding:20,
+          background:themeName === "halo" ? "linear-gradient(135deg, #4ADE80, #22C55E)" : "linear-gradient(135deg, #6366F1, #8B5CF6, #A855F7)",borderRadius:16,padding:"20px 28px",
           display:"flex",alignItems:"center",justifyContent:"center",gap:14,cursor:"pointer",color:themeName === "halo" ? "#0A120E" : "#fff",
           boxShadow:themeName === "halo" ? "0 4px 24px rgba(74,222,128,0.3)" : "0 4px 24px rgba(99,102,241,0.35)",transition:"all 0.25s",
         }}
           onMouseEnter={e => { e.currentTarget.style.transform="translateY(-2px)"; e.currentTarget.style.boxShadow=themeName === "halo" ? "0 8px 32px rgba(74,222,128,0.4)" : "0 8px 32px rgba(99,102,241,0.45)"; }}
           onMouseLeave={e => { e.currentTarget.style.transform="none"; e.currentTarget.style.boxShadow=themeName === "halo" ? "0 4px 24px rgba(74,222,128,0.3)" : "0 4px 24px rgba(99,102,241,0.35)"; }}
         >
-          <div style={{ width:44,height:44,borderRadius:14,background:themeName === "halo" ? "rgba(0,0,0,0.12)" : "rgba(255,255,255,0.2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20 }}><Play fill="currentColor" size={20} /></div>
+          <div style={{ width:48,height:48,borderRadius:14,background:themeName === "halo" ? "rgba(0,0,0,0.12)" : "rgba(255,255,255,0.2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22 }}><Play fill="currentColor" size={22} /></div>
           <div>
             <div style={{ fontFamily:"var(--heading)",fontSize:15,fontWeight:700,color:themeName === "halo" ? "#0A120E" : "#fff" }}>Start Focus</div>
             <div style={{ fontFamily:"var(--mono)",fontSize:11,color:themeName === "halo" ? "rgba(10,18,14,0.6)" : "rgba(255,255,255,0.7)" }}>{timerActive ? fmt(timeLeft) : "25:00"}</div>
@@ -137,27 +159,17 @@ export default function TodayPage({
       {/* Schedule + sidebar */}
       <div className="today-layout" style={{ display:"flex",gap:22 }}>
         <div style={{ flex:1,minWidth:0 }}>
-          <TodaySchedule
-            tasks={tasks}
-            TaskRow={TaskRow}
-            setNewTaskWs={setNewTaskWs}
-            setShowNewTask={setShowNewTask}
-          />
-        </div>
-
-        {/* Sidebar */}
-        <div className="today-sidebar" style={{ width:280,flexShrink:0 }}>
-          {/* Overdue Tasks */}
+          {/* Overdue Tasks - prominent placement */}
           {(() => {
             const today = new Date().toISOString().split("T")[0];
             const overdue = tasks.filter(t => !t.done && t.dueDate && t.dueDate < today);
             return overdue.length > 0 ? (
-              <Glass style={{ padding:"18px 18px 14px 18px",marginBottom:14,background:"rgba(239,68,68,0.04)",border:"1px solid rgba(239,68,68,0.12)" }}>
+              <Glass style={{ padding:"18px 18px 14px 18px",marginBottom:18,background:"rgba(239,68,68,0.04)",border:"2px solid rgba(239,68,68,0.25)" }}>
                 <div style={{ display:"flex",alignItems:"center",gap:8,marginBottom:12 }}>
-                  <AlertTriangle size={14} color="#EF4444" />
-                  <h3 style={{ fontFamily:"var(--heading)",fontSize:13,color:"#EF4444",margin:0,fontWeight:700 }}>Overdue ({overdue.length})</h3>
+                  <AlertTriangle size={16} color="#EF4444" style={{ animation:"pulse 2s ease-in-out infinite" }} />
+                  <h3 style={{ fontFamily:"var(--heading)",fontSize:14,color:"#EF4444",margin:0,fontWeight:700 }}>Overdue ({overdue.length})</h3>
                 </div>
-                <div style={{ maxHeight:250,overflowY:"auto",paddingRight:4 }}>
+                <div style={{ maxHeight:200,overflowY:"auto",paddingRight:4 }}>
                   {overdue.map((task, i) => (
                     <TaskRow key={task.id} task={task} idx={i} />
                   ))}
@@ -165,6 +177,17 @@ export default function TodayPage({
               </Glass>
             ) : null;
           })()}
+          <TodaySchedule
+            tasks={tasks}
+            TaskRow={TaskRow}
+            setNewTaskWs={setNewTaskWs}
+            setShowNewTask={setShowNewTask}
+            rewardText={rewardText}
+          />
+        </div>
+
+        {/* Sidebar */}
+        <div className="today-sidebar" style={{ width:280,flexShrink:0 }}>
           {/* Today's Habits */}
           <Glass style={{ padding:18,marginBottom:14 }}>
             <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10 }}>
@@ -213,7 +236,13 @@ export default function TodayPage({
             )}
           </Glass>
           <Glass style={{ padding:18,background:"linear-gradient(135deg, rgba(251,191,36,0.06), rgba(245,158,11,0.04))",border:"1px solid rgba(251,191,36,0.15)" }}>
-            <h3 style={{ fontFamily:"var(--heading)",fontSize:13,color:"var(--text)",margin:"0 0 8px",fontWeight:700 }}>Today's Reward</h3>
+            <div style={{ display:"flex",alignItems:"center",gap:12,marginBottom:8 }}>
+              <div style={{ position:"relative",width:36,height:36,flexShrink:0 }}>
+                <Ring percent={totalTasks > 0 ? (doneTasks/totalTasks)*100 : 0} size={36} stroke={3} color="#FBBF24" />
+                <div style={{ position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"var(--mono)",fontSize:8,fontWeight:700,color:"var(--text)" }}>{Math.round(totalTasks > 0 ? (doneTasks/totalTasks)*100 : 0)}%</div>
+              </div>
+              <h3 style={{ fontFamily:"var(--heading)",fontSize:13,color:"var(--text)",margin:0,fontWeight:700 }}>Today's Reward</h3>
+            </div>
             {editingReward ? (
               <div>
                 <input

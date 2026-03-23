@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Send, X, Check, Pencil, CheckSquare, Square } from "lucide-react";
+import { useState, useRef } from "react";
+import { Send, X, Check, Pencil, CheckSquare, Square, ArrowRight, Trash2 } from "lucide-react";
 import { Glass, Btn } from "../ui";
 import { getUserId } from "../../lib/getUserId";
 import { supabase } from "../../lib/supabase";
@@ -11,6 +11,29 @@ export default function InboxPage({ inbox, newInboxText, setNewInboxText, addInb
   const [editId, setEditId] = useState(null);
   const [editText, setEditText] = useState("");
   const [selected, setSelected] = useState(new Set());
+  const [hoveredId, setHoveredId] = useState(null);
+  const [swipeState, setSwipeState] = useState({});
+  const touchRef = useRef({});
+
+  const handleTouchStart = (id, e) => {
+    touchRef.current[id] = { startX: e.touches[0].clientX, startY: e.touches[0].clientY };
+  };
+  const handleTouchMove = (id, e) => {
+    const ref = touchRef.current[id];
+    if (!ref) return;
+    const dx = e.touches[0].clientX - ref.startX;
+    const dy = e.touches[0].clientY - ref.startY;
+    if (Math.abs(dy) > Math.abs(dx) && !ref.swiping) return;
+    ref.swiping = true;
+    setSwipeState(s => ({ ...s, [id]: Math.max(-100, Math.min(100, dx)) }));
+  };
+  const handleTouchEnd = (id, item) => {
+    const dx = swipeState[id] || 0;
+    if (dx > 80) convertToTask(item);
+    else if (dx < -80) dismissInbox(item.id);
+    setSwipeState(s => ({ ...s, [id]: 0 }));
+    delete touchRef.current[id];
+  };
 
   const toggleSelect = (id) => setSelected(prev => {
     const next = new Set(prev);
@@ -81,7 +104,20 @@ export default function InboxPage({ inbox, newInboxText, setNewInboxText, addInb
             )}
           </div>
           {untriaged.map((item, i) => (
-            <Glass key={item.id} style={{ padding:14,marginBottom:8,display:"flex",alignItems:"center",gap:12,animation:`slideUp 0.3s ${i*0.04}s both ease-out` }}>
+            <div key={item.id} style={{ position:"relative",marginBottom:8,overflow:"hidden",borderRadius:14,animation:`slideUp 0.3s ${i*0.04}s both ease-out` }}>
+              {/* Swipe backgrounds */}
+              <div style={{ position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"flex-start",padding:"0 18px",background:"rgba(34,197,94,0.12)",opacity:(swipeState[item.id]||0)>0?1:0,transition:"opacity 0.1s" }}>
+                <ArrowRight size={18} color="#22C55E" /><span style={{ fontFamily:"var(--mono)",fontSize:10,color:"#22C55E",fontWeight:700,marginLeft:6 }}>Task</span>
+              </div>
+              <div style={{ position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"flex-end",padding:"0 18px",background:"rgba(239,68,68,0.12)",opacity:(swipeState[item.id]||0)<0?1:0,transition:"opacity 0.1s" }}>
+                <span style={{ fontFamily:"var(--mono)",fontSize:10,color:"#EF4444",fontWeight:700,marginRight:6 }}>Dismiss</span><Trash2 size={16} color="#EF4444" />
+              </div>
+              <Glass
+                onMouseEnter={() => setHoveredId(item.id)} onMouseLeave={() => setHoveredId(null)}
+                onTouchStart={e => handleTouchStart(item.id, e)}
+                onTouchMove={e => handleTouchMove(item.id, e)}
+                onTouchEnd={() => handleTouchEnd(item.id, item)}
+                style={{ padding:14,display:"flex",alignItems:"center",gap:12,position:"relative",transform:`translateX(${swipeState[item.id]||0}px)`,transition:(swipeState[item.id]||0)===0?"transform 0.2s":"none" }}>
               <div role="button" onClick={() => toggleSelect(item.id)} style={{ width:28,height:28,borderRadius:7,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",color:selected.has(item.id) ? "var(--primary)" : "var(--muted)",flexShrink:0,transition:"all 0.15s" }}>
                 {selected.has(item.id) ? <CheckSquare size={16} /> : <Square size={16} />}
               </div>
@@ -100,19 +136,22 @@ export default function InboxPage({ inbox, newInboxText, setNewInboxText, addInb
               </div>
               {editId !== item.id && (
                 <div style={{ display:"flex",gap:4,alignItems:"center" }}>
-                  <div role="button" onClick={() => startEdit(item)} style={{ width:28,height:28,borderRadius:7,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",color:"var(--muted)",transition:"all 0.15s" }}
-                    onMouseEnter={e => { e.currentTarget.style.color="var(--primary)"; e.currentTarget.style.background="var(--subtle-bg)"; }}
-                    onMouseLeave={e => { e.currentTarget.style.color="var(--muted)"; e.currentTarget.style.background="transparent"; }}
-                  ><Pencil size={14}/></div>
-                  <Btn small onClick={() => convertToTask(item)}>→ Task</Btn>
-                  <Btn small onClick={() => triageInbox(item.id)}>Done</Btn>
-                  <div role="button" onClick={() => dismissInbox(item.id)} style={{ width:28,height:28,borderRadius:7,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",color:"var(--muted)",transition:"all 0.15s" }}
-                    onMouseEnter={e => { e.currentTarget.style.color="#EF4444"; e.currentTarget.style.background="rgba(239,68,68,0.08)"; }}
-                    onMouseLeave={e => { e.currentTarget.style.color="var(--muted)"; e.currentTarget.style.background="transparent"; }}
-                  ><X size={14} /></div>
+                  <div style={{ display:"flex",gap:4,alignItems:"center",opacity:hoveredId === item.id ? 1 : 0,pointerEvents:hoveredId === item.id ? "auto" : "none",transition:"opacity 0.15s" }}>
+                    <div role="button" onClick={() => startEdit(item)} style={{ width:28,height:28,borderRadius:7,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",color:"var(--muted)",transition:"all 0.15s" }}
+                      onMouseEnter={e => { e.currentTarget.style.color="var(--primary)"; e.currentTarget.style.background="var(--subtle-bg)"; }}
+                      onMouseLeave={e => { e.currentTarget.style.color="var(--muted)"; e.currentTarget.style.background="transparent"; }}
+                    ><Pencil size={14}/></div>
+                    <Btn small onClick={() => triageInbox(item.id)}>Done</Btn>
+                    <div role="button" onClick={() => dismissInbox(item.id)} style={{ width:28,height:28,borderRadius:7,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",color:"var(--muted)",transition:"all 0.15s" }}
+                      onMouseEnter={e => { e.currentTarget.style.color="#EF4444"; e.currentTarget.style.background="rgba(239,68,68,0.08)"; }}
+                      onMouseLeave={e => { e.currentTarget.style.color="var(--muted)"; e.currentTarget.style.background="transparent"; }}
+                    ><X size={14} /></div>
+                  </div>
+                  <Btn small primary onClick={() => convertToTask(item)}>→ Task</Btn>
                 </div>
               )}
             </Glass>
+            </div>
           ))}
         </div>
       )}
