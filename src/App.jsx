@@ -131,23 +131,9 @@ export default function App() {
   const [wsDocName, setWsDocName] = useState("");
   const [wsDocType, setWsDocType] = useState("doc");
 
-  // ─── APPLE CALENDAR STATE ───
-  const [appleConnected, setAppleConnected] = useState(false);
-  const [appleIdInput, setAppleIdInput] = useState("");
-  const [appleAppPassword, setAppleAppPassword] = useState("");
-  const [appleCalendars, setAppleCalendars] = useState([]);
-  const [appleReminderLists, setAppleReminderLists] = useState([]);
-  const [selectedCalendarId, setSelectedCalendarId] = useState("");
-  const [selectedRemindersId, setSelectedRemindersId] = useState("");
-  const [syncStatus, setSyncStatus] = useState("idle");
-  const [lastSyncAt, setLastSyncAt] = useState(null);
-  const [syncError, setSyncError] = useState(null);
-  const [showAppleConnect, setShowAppleConnect] = useState(false);
-  const [appleConnecting, setAppleConnecting] = useState(false);
-
   // ─── PROFILE STATE ───
   const [profileData, setProfileData] = useState({
-    full_name: "", date_of_birth: "", phone: "", email: "",
+    preferred_name: "",
     address_line1: "", address_line2: "", city: "", state: "", zip: "", country: "",
   });
   const [profileLoaded, setProfileLoaded] = useState(false);
@@ -285,13 +271,6 @@ export default function App() {
       flash("Update failed — please try again.");
       return;
     }
-    if (task.externalId) {
-      invokeFunction("caldav-item", {
-        body: { action: "update-todo", href: task.caldav_href, uid: task.externalId,
-          title: task.title, done: newDone, priority: task.priority,
-          description: task.description, etag: task.caldav_etag },
-      }).catch(e => logger.warn("CalDAV sync skipped:", e.message));
-    }
   };
 
   const updateTaskStatus = async (id, newStatus) => {
@@ -334,11 +313,6 @@ export default function App() {
       if (task) setTasks(ts => [...ts, task]);
       flash("Delete failed — please try again.");
       return;
-    }
-    if (task?.caldav_href) {
-      invokeFunction("caldav-item", {
-        body: { action: "delete", href: task.caldav_href, etag: task.caldav_etag },
-      }).catch(e => logger.warn("CalDAV delete skipped:", e.message));
     }
     flash("Task deleted.");
   };
@@ -584,8 +558,6 @@ export default function App() {
       logger.error("Failed to save time block:", error);
       setTimeBlocks(prev => prev.filter(b => b.id !== id));
       flash("Failed to save time block.");
-    } else {
-      if (typeof syncAll === "function") syncAll();
     }
   };
 
@@ -698,7 +670,7 @@ export default function App() {
   const totalPomos = todayOnly.reduce((s, t) => s + t.totalPomos, 0);
   const pColors = { high: "#EF4444", medium: "#F59E0B", low: "#22C55E" };
   const hour = new Date().getHours();
-  const firstName = profileData.full_name ? profileData.full_name.split(" ")[0] : "";
+  const firstName = profileData.preferred_name ? profileData.preferred_name.split(" ")[0] : "";
   const greeting = (hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening") + (firstName ? `, ${firstName}` : "");
   const activeWiki = wiki.find(a => a.id === activeWikiId);
 
@@ -780,10 +752,7 @@ export default function App() {
       if (error) { logger.warn("Profile fetch error:", error); return; }
       if (data) {
         setProfileData({
-          full_name: data.full_name || "",
-          date_of_birth: data.date_of_birth || "",
-          phone: data.phone || "",
-          email: data.email || "",
+          preferred_name: data.preferred_name || "",
           address_line1: data.address_line1 || "",
           address_line2: data.address_line2 || "",
           city: data.city || "",
@@ -797,19 +766,12 @@ export default function App() {
   };
 
   const saveProfile = async () => {
-    const emailCheck = validateEmail(profileData.email);
-    if (!emailCheck.valid) { flash(emailCheck.error); return; }
-    const phoneCheck = validatePhone(profileData.phone);
-    if (!phoneCheck.valid) { flash(phoneCheck.error); return; }
     setProfileSaving(true);
     try {
       const resp = await invokeFunction("profile", {
         body: {
           action: "write",
-          full_name: sanitizeText(profileData.full_name, MAX_NAME) || null,
-          date_of_birth: profileData.date_of_birth || null,
-          phone: phoneCheck.value || null,
-          email: emailCheck.value || null,
+          preferred_name: sanitizeText(profileData.preferred_name, MAX_NAME) || null,
           address_line1: sanitizeText(profileData.address_line1, MAX_NAME) || null,
           address_line2: sanitizeText(profileData.address_line2, MAX_NAME) || null,
           city: sanitizeText(profileData.city, MAX_NAME) || null,
@@ -869,100 +831,6 @@ export default function App() {
       logger.error("Account deletion failed:", e);
       flash("Failed to delete account. Please try again.");
       setDeleting(false);
-    }
-  };
-
-  // ─── APPLE CALENDAR FUNCTIONS ───
-
-  const fetchAppleStatus = async () => {
-    try {
-      const { data, error } = await invokeFunction("apple-credentials", {
-        body: { action: "status" },
-      });
-      if (error) return;
-      if (data?.connected) {
-        setAppleConnected(true);
-        setLastSyncAt(data.last_sync_at);
-        setSelectedCalendarId(data.selected_calendar_id || "");
-        setSelectedRemindersId(data.selected_reminders_id || "");
-        // Load calendar lists so dropdowns work on any device
-        try {
-          const { data: discData, error: discErr } = await invokeFunction("caldav-discover", { body: {} });
-          if (!discErr && discData?.calendars) setAppleCalendars(discData.calendars || []);
-          if (!discErr && discData?.reminderLists) setAppleReminderLists(discData.reminderLists || []);
-        } catch (_discErr) { /* calendar list load is best-effort */ }
-      }
-    } catch (_e) { /* not connected */ }
-  };
-
-  const connectApple = async () => {
-    if (!appleIdInput.trim() || !appleAppPassword.trim()) return;
-    setAppleConnecting(true);
-    setSyncError(null);
-    try {
-      const { data, error } = await invokeFunction("apple-credentials", {
-        body: { action: "connect", apple_id: appleIdInput, app_password: appleAppPassword },
-      });
-      if (error) throw new Error(error.message);
-      if (data?.error) throw new Error(data.error);
-      setAppleConnected(true);
-      setAppleCalendars(data.calendars || []);
-      setAppleReminderLists(data.reminderLists || []);
-      setShowAppleConnect(false);
-      setAppleIdInput("");
-      setAppleAppPassword("");
-      flash("Apple Calendar connected!");
-    } catch (e) {
-      logger.error("Apple connect error:", e);
-      setSyncError("Connection failed. Please check your credentials and try again.");
-    } finally {
-      setAppleConnecting(false);
-    }
-  };
-
-  const disconnectApple = async () => {
-    const { error } = await invokeFunction("apple-credentials", {
-      body: { action: "disconnect" },
-    });
-    if (error) {
-      logger.error("Disconnect failed:", error);
-      flash("Failed to disconnect. Please try again.");
-      return;
-    }
-    setAppleConnected(false);
-    setAppleCalendars([]);
-    setAppleReminderLists([]);
-    setSelectedCalendarId("");
-    setSelectedRemindersId("");
-    setLastSyncAt(null);
-    flash("Apple Calendar disconnected.");
-  };
-
-  const saveCalendarSelection = async () => {
-    const { error } = await invokeFunction("apple-credentials", {
-      body: { action: "update", selected_calendar_id: selectedCalendarId },
-    });
-    if (error) {
-      logger.error("Save calendar selection failed:", error);
-      flash("Failed to save selection. Please try again.");
-      return;
-    }
-    flash("Calendar selection saved!");
-  };
-
-  const rediscoverCalendars = async () => {
-    setSyncError(null);
-    try {
-      const { data, error } = await invokeFunction("caldav-discover", {
-        body: {},
-      });
-      if (error) throw new Error(error.message);
-      if (data?.error) throw new Error(data.error);
-      setAppleCalendars(data.calendars || []);
-      setAppleReminderLists(data.reminderLists || []);
-    } catch (e) {
-      logger.error("Calendar load error:", e);
-      setSyncError("Failed to load calendars. Please try again.");
     }
   };
 
@@ -1166,42 +1034,11 @@ export default function App() {
     }
   };
 
-  const syncingRef = useRef(false);
-  const syncAll = async () => {
-    if (syncingRef.current) return;
-    syncingRef.current = true;
-    setSyncStatus("syncing");
-    setSyncError(null);
-    try {
-      const [calRes] = await Promise.allSettled([
-        invokeFunction("caldav-sync-calendar", { body: {} }),
-      ]);
-      const errors = [calRes]
-        .filter(r => r.status === "rejected" || r.value?.data?.error)
-        .map(r => r.status === "rejected" ? r.reason?.message : r.value?.data?.error);
-      if (errors.length > 0) {
-        setSyncError(errors.join("; "));
-        setSyncStatus("error");
-      } else {
-        await loadFromSupabase();
-        setSyncStatus("success");
-        setLastSyncAt(new Date().toISOString());
-        flash("Sync complete!");
-      }
-    } catch (e) {
-      setSyncError(e.message);
-      setSyncStatus("error");
-    } finally {
-      syncingRef.current = false;
-    }
-  };
-
   useEffect(() => {
     let edgeFunctionsLoaded = false;
     const loadEdgeFunctions = () => {
       if (edgeFunctionsLoaded) return;
       edgeFunctionsLoaded = true;
-      fetchAppleStatus();
       fetchProfile();
     };
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
@@ -1218,15 +1055,6 @@ export default function App() {
     });
     return () => subscription.unsubscribe();
   }, []);
-
-  // Auto-sync with Apple Calendar every 5 minutes when connected
-  useEffect(() => {
-    if (!appleConnected) return;
-    const interval = setInterval(() => {
-      syncAll();
-    }, 5 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, [appleConnected]);
 
   // Persist gamification stats to profile when they change
   const statsLoadedRef = useRef(false);
@@ -1450,7 +1278,7 @@ export default function App() {
               <span style={{ display: "flex" }}><Flame size={14} color="var(--danger)" /></span>
               <span style={{ fontFamily:"var(--mono)",fontSize:11,color:"var(--danger)",fontWeight:700 }}>{streak}</span>
             </div>
-            <div onClick={() => setPage("rewards")} style={{ width:32,height:32,borderRadius:10,background:themeName === "halo" ? "linear-gradient(135deg, #4ADE80, #22C55E)" : "linear-gradient(135deg, #6366F1, #8B5CF6)",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"var(--body)",fontSize:12,fontWeight:700,color:"#fff",cursor:"pointer",flexShrink:0 }}>{profileData.full_name ? profileData.full_name.split(" ").map(n => n[0]).join("").slice(0,2).toUpperCase() : "?"}</div>
+            <div onClick={() => setPage("rewards")} style={{ width:32,height:32,borderRadius:10,background:themeName === "halo" ? "linear-gradient(135deg, #4ADE80, #22C55E)" : "linear-gradient(135deg, #6366F1, #8B5CF6)",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"var(--body)",fontSize:12,fontWeight:700,color:"#fff",cursor:"pointer",flexShrink:0 }}>{profileData.preferred_name ? profileData.preferred_name.split(" ").map(n => n[0]).join("").slice(0,2).toUpperCase() : "?"}</div>
           </div>
         </div>
 
@@ -1469,7 +1297,7 @@ export default function App() {
           {page === "inbox" && <InboxPage inbox={inbox} newInboxText={newInboxText} setNewInboxText={setNewInboxText} addInboxItem={addInboxItem} triageInbox={triageInbox} dismissInbox={dismissInbox} updateInboxItem={updateInboxItem} setTasks={setTasks} flash={flash} inputStyle={inputStyle} />}
           {page === "wiki" && <WikiPage wiki={wiki} setShowNewWiki={setShowNewWiki} goWiki={goWiki} />}
           {page === "wikiArticle" && <WikiArticlePage activeWiki={activeWiki} setPage={setPage} editingWiki={editingWiki} setEditingWiki={setEditingWiki} editWikiContent={editWikiContent} setEditWikiContent={setEditWikiContent} saveWikiEdit={saveWikiEdit} deleteWikiArticle={deleteWikiArticle} inputStyle={inputStyle} />}
-          {page === "settings" && <SettingsPage profileData={profileData} setProfileData={setProfileData} saveProfile={saveProfile} profileSaving={profileSaving} themeName={themeName} appleConnected={appleConnected} showAppleConnect={showAppleConnect} setShowAppleConnect={setShowAppleConnect} appleIdInput={appleIdInput} setAppleIdInput={setAppleIdInput} appleAppPassword={appleAppPassword} setAppleAppPassword={setAppleAppPassword} appleConnecting={appleConnecting} connectApple={connectApple} syncError={syncError} setSyncError={setSyncError} appleCalendars={appleCalendars} selectedCalendarId={selectedCalendarId} setSelectedCalendarId={setSelectedCalendarId} saveCalendarSelection={saveCalendarSelection} rediscoverCalendars={rediscoverCalendars} syncAll={syncAll} syncStatus={syncStatus} lastSyncAt={lastSyncAt} disconnectApple={disconnectApple} exportData={exportData} exporting={exporting} deleteAccount={deleteAccount} deleting={deleting} inputStyle={inputStyle} />}
+          {page === "settings" && <SettingsPage profileData={profileData} setProfileData={setProfileData} saveProfile={saveProfile} profileSaving={profileSaving} themeName={themeName} exportData={exportData} exporting={exporting} deleteAccount={deleteAccount} deleting={deleting} inputStyle={inputStyle} />}
         </div>
       </div>
 
