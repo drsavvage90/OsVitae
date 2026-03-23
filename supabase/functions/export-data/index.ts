@@ -5,8 +5,7 @@ import { decryptFields } from "../_shared/crypto.ts";
 import { errorResponse } from "../_shared/errors.ts";
 
 const PII_FIELDS = [
-  "full_name", "date_of_birth", "phone", "email",
-  "address_line1", "address_line2", "city", "state", "zip", "country",
+  "preferred_name", "country",
 ];
 
 serve(async (req: Request) => {

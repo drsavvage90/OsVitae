@@ -133,8 +133,7 @@ export default function App() {
 
   // ─── PROFILE STATE ───
   const [profileData, setProfileData] = useState({
-    preferred_name: "",
-    address_line1: "", address_line2: "", city: "", state: "", zip: "", country: "",
+    preferred_name: "", country: "",
   });
   const [profileLoaded, setProfileLoaded] = useState(false);
   const [profileSaving, setProfileSaving] = useState(false);
@@ -753,11 +752,6 @@ export default function App() {
       if (data) {
         setProfileData({
           preferred_name: data.preferred_name || "",
-          address_line1: data.address_line1 || "",
-          address_line2: data.address_line2 || "",
-          city: data.city || "",
-          state: data.state || "",
-          zip: data.zip || "",
           country: data.country || "",
         });
         setProfileLoaded(true);
@@ -772,11 +766,6 @@ export default function App() {
         body: {
           action: "write",
           preferred_name: sanitizeText(profileData.preferred_name, MAX_NAME) || null,
-          address_line1: sanitizeText(profileData.address_line1, MAX_NAME) || null,
-          address_line2: sanitizeText(profileData.address_line2, MAX_NAME) || null,
-          city: sanitizeText(profileData.city, MAX_NAME) || null,
-          state: sanitizeText(profileData.state, MAX_NAME) || null,
-          zip: sanitizeText(profileData.zip, 20) || null,
           country: sanitizeText(profileData.country, MAX_NAME) || null,
         },
       });

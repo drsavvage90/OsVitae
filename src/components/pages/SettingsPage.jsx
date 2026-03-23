@@ -32,31 +32,6 @@ export default function SettingsPage({
           <input value={profileData.preferred_name} onChange={e => setProfileData(p => ({ ...p, preferred_name: e.target.value }))} placeholder="Your preferred name" maxLength={200} style={inputStyle} />
         </div>
 
-        <div style={{ marginBottom:12 }}>
-          <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>Address Line 1</label>
-          <input value={profileData.address_line1} onChange={e => setProfileData(p => ({ ...p, address_line1: e.target.value }))} placeholder="Street address" maxLength={200} style={inputStyle} />
-        </div>
-
-        <div style={{ marginBottom:12 }}>
-          <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>Address Line 2</label>
-          <input value={profileData.address_line2} onChange={e => setProfileData(p => ({ ...p, address_line2: e.target.value }))} placeholder="Apt, suite, unit, etc. (optional)" maxLength={200} style={inputStyle} />
-        </div>
-
-        <div style={{ display:"flex",gap:12,marginBottom:12 }}>
-          <div style={{ flex:2 }}>
-            <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>City</label>
-            <input value={profileData.city} onChange={e => setProfileData(p => ({ ...p, city: e.target.value }))} placeholder="City" maxLength={100} style={inputStyle} />
-          </div>
-          <div style={{ flex:1 }}>
-            <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>State</label>
-            <input value={profileData.state} onChange={e => setProfileData(p => ({ ...p, state: e.target.value }))} placeholder="State" maxLength={50} style={inputStyle} />
-          </div>
-          <div style={{ flex:1 }}>
-            <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>ZIP</label>
-            <input value={profileData.zip} onChange={e => setProfileData(p => ({ ...p, zip: e.target.value }))} placeholder="ZIP" maxLength={20} style={inputStyle} />
-          </div>
-        </div>
-
         <div style={{ marginBottom:16 }}>
           <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>Country</label>
           <input value={profileData.country} onChange={e => setProfileData(p => ({ ...p, country: e.target.value }))} placeholder="Country" maxLength={100} style={inputStyle} />
