@@ -24,6 +24,48 @@ function formatTime(h) {
   return `${hr}:${min}`;
 }
 
+// Compute column layout for overlapping blocks (Google Calendar style)
+function computeOverlapColumns(blocks) {
+  if (!blocks.length) return [];
+  const sorted = blocks.map((b, i) => ({ ...b, _idx: i })).sort((a, b) => a.startHour - b.startHour || a.endHour - b.endHour);
+  const columns = []; // each column is an array of blocks
+  const result = new Map(); // blockId -> { col, totalCols }
+
+  for (const block of sorted) {
+    // Find first column where this block doesn't overlap
+    let placed = false;
+    for (let c = 0; c < columns.length; c++) {
+      const last = columns[c][columns[c].length - 1];
+      if (block.startHour >= last.endHour) {
+        columns[c].push(block);
+        result.set(block.id, { col: c });
+        placed = true;
+        break;
+      }
+    }
+    if (!placed) {
+      columns.push([block]);
+      result.set(block.id, { col: columns.length - 1 });
+    }
+  }
+
+  // For each block, find how many columns overlap at its time range
+  for (const block of sorted) {
+    let maxCols = 1;
+    for (const other of sorted) {
+      if (other.id === block.id) continue;
+      if (other.startHour < block.endHour && other.endHour > block.startHour) {
+        const otherCol = result.get(other.id).col;
+        const thisCol = result.get(block.id).col;
+        maxCols = Math.max(maxCols, Math.max(otherCol, thisCol) + 1);
+      }
+    }
+    result.get(block.id).totalCols = maxCols;
+  }
+
+  return result;
+}
+
 export default function CalendarPage({
   timeBlocks, tasks, ws, projects, updateTimeBlock, setShowNewBlock, deleteTimeBlock, setEditingBlock, goTask
 }) {
@@ -64,17 +106,27 @@ export default function CalendarPage({
               </div>
             </div>
           ))}
-          {timeBlocks.filter(b => b.date === new Date().toISOString().split("T")[0]).map(block => {
+          {(() => {
+            const todayBlocks = timeBlocks.filter(b => b.date === new Date().toISOString().split("T")[0]);
+            const layout = computeOverlapColumns(todayBlocks);
+            return todayBlocks.map(block => {
             const startHour = block.startHour;
             const endHour = block.endHour;
             const logicalHeight = (endHour - startHour) * HOUR_HEIGHT;
             const height = Math.max(logicalHeight, 46);
             const top = (startHour - FIRST_HOUR) * HOUR_HEIGHT;
-            
+
             const task = block.taskId ? tasks?.find(t => t.id === block.taskId) : null;
             const w = task && ws ? ws.find(x => x.id === task.wsId) : null;
             const proj = task && projects ? projects.find(p => p.id === task.projectId) : null;
             const subtitle = [w?.name, proj?.name].filter(Boolean).join(" • ");
+
+            const { col = 0, totalCols = 1 } = layout.get(block.id) || {};
+            const LABEL_WIDTH = 68;
+            const RIGHT_PAD = 12;
+            const availWidth = `calc(100% - ${LABEL_WIDTH + RIGHT_PAD}px)`;
+            const colWidth = `calc(${availWidth} / ${totalCols})`;
+            const leftOffset = `calc(${LABEL_WIDTH}px + ${availWidth} * ${col} / ${totalCols})`;
 
             return (
               <div
@@ -82,8 +134,8 @@ export default function CalendarPage({
                 style={{
                   position:"absolute",
                   top: top + 2,
-                  left: 68,
-                  right: 12,
+                  left: leftOffset,
+                  width: `calc(${colWidth} - 4px)`,
                   height: height - 4,
                   background: `${block.color}14`,
                   border: `1px solid ${block.color}33`,
@@ -162,7 +214,8 @@ export default function CalendarPage({
                 </div>
               </div>
             );
-          })}
+          });
+          })()}
         </div>
       </Glass>
     </div>

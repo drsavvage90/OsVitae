@@ -94,6 +94,7 @@ export default function App() {
   const [newTaskWs, setNewTaskWs] = useState(null);
   const [newTaskDueDate, setNewTaskDueDate] = useState("");
   const [newTaskDueTime, setNewTaskDueTime] = useState("");
+  const [newTaskEndTime, setNewTaskEndTime] = useState("");
   const [newTaskSection, setNewTaskSection] = useState("afternoon");
   const [newTaskReward, setNewTaskReward] = useState("");
   const [newTaskPomos, setNewTaskPomos] = useState(2);
@@ -291,7 +292,7 @@ export default function App() {
     const task = tasks.find(t => t.id === id);
     if (!task) return;
     setTasks(ts => ts.map(t => t.id === id ? { ...t, [field]: value } : t));
-    const dbField = field === "wsId" ? "workspace_id" : field === "projectId" ? "project_id" : field === "dueDate" ? "due_date" : field === "dueTime" ? "due_time" : field;
+    const dbField = field === "wsId" ? "workspace_id" : field === "projectId" ? "project_id" : field === "dueDate" ? "due_date" : field === "dueTime" ? "due_time" : field === "endTime" ? "end_time" : field;
     const { error } = await supabase.from("tasks").update({ [dbField]: value }).eq("id", id);
     if (error) {
       logger.error(`Failed to update task ${field}:`, error);
@@ -321,7 +322,7 @@ export default function App() {
     setTasks(ts => ts.map(t => t.id === editingTask.id ? {
       ...t, title: editingTask.title, desc: editingTask.desc,
       description: editingTask.desc, priority: editingTask.priority,
-      dueDate: editingTask.dueDate, dueTime: editingTask.dueTime,
+      dueDate: editingTask.dueDate, dueTime: editingTask.dueTime, endTime: editingTask.endTime,
       section: editingTask.section, wsId: editingTask.wsId,
       projectId: editingTask.projectId, status: editingTask.status || t.status,
       reward: editingTask.reward, totalPomos: editingTask.totalPomos,
@@ -330,7 +331,7 @@ export default function App() {
     const { error } = await supabase.from("tasks").update({
       title: editingTask.title, description: editingTask.desc,
       priority: editingTask.priority, due_date: editingTask.dueDate || null,
-      due_time: editingTask.dueTime || null,
+      due_time: editingTask.dueTime || null, end_time: editingTask.endTime || null,
       section: editingTask.section || "afternoon",
       workspace_id: editingTask.wsId || null,
       project_id: editingTask.projectId || null,
@@ -383,15 +384,16 @@ export default function App() {
     const title = titleCheck.value, desc = descCheck.value, priority = newTaskPriority, wsId = newTaskWs;
     const projectId = newTaskProject || null;
     const dueDate = newTaskDueDate || null, dueTime = newTaskDueTime || null;
+    const endTime = newTaskEndTime || null;
     const section = newTaskSection, reward = newTaskReward || null, totalPomos = newTaskPomos;
     const subtaskObjs = newTaskSubtasks.map((text, i) => ({ id: crypto.randomUUID(), text, done: false, xp: 10, position: i }));
     const newTask = {
       id, title, desc, description: desc, priority,
-      wsId, projectId, dueTime, dueDate, done: false, status: "todo", section,
+      wsId, projectId, dueTime, endTime, dueDate, done: false, status: "todo", section,
       subtasks: subtaskObjs, notes: [], attachments: [], totalPomos, donePomos: 0, reward,
     };
     setTasks(ts => [...ts, newTask]);
-    setNewTaskTitle(""); setNewTaskDesc(""); setNewTaskDueDate(""); setNewTaskDueTime("");
+    setNewTaskTitle(""); setNewTaskDesc(""); setNewTaskDueDate(""); setNewTaskDueTime(""); setNewTaskEndTime("");
     setNewTaskSection("afternoon"); setNewTaskReward(""); setNewTaskPomos(2);
     setNewTaskSubtasks([]); setNewSubtaskText(""); setShowNewTask(false);
     setNewTaskProject(null);
@@ -403,7 +405,7 @@ export default function App() {
       priority, done: false, status: "todo", section,
       workspace_id: wsId || null,
       project_id: projectId,
-      due_date: dueDate, due_time: dueTime,
+      due_date: dueDate, due_time: dueTime, end_time: endTime,
       reward, total_pomos: totalPomos,
     });
     if (error) {
@@ -560,9 +562,9 @@ export default function App() {
     }
   };
 
-  const createTimeBlockFromTask = async ({ taskId, title, color, startHour }) => {
+  const createTimeBlockFromTask = async ({ taskId, title, color, startHour, endHour: endHourParam }) => {
     const blockDate = new Date().toISOString().split("T")[0];
-    const endHour = startHour + 1;
+    const endHour = endHourParam || startHour + 1;
     // Check local state first
     let alreadyExists = false;
     let id;
@@ -936,7 +938,7 @@ export default function App() {
         description: t.description || "",
         priority: t.priority || "medium", done: t.done || false,
         status: t.status || (t.done ? "done" : "todo"),
-        dueDate: t.due_date, dueTime: t.due_time, section: t.section || "afternoon",
+        dueDate: t.due_date, dueTime: t.due_time, endTime: t.end_time, section: t.section || "afternoon",
         externalId: t.external_id, caldav_href: t.caldav_href, caldav_etag: t.caldav_etag,
         subtasks: subtasksByTask[t.id] || [], notes: notesByTask[t.id] || [],
         attachments: [], donePomos: t.done_pomos || 0, totalPomos: t.total_pomos || 0,
@@ -1080,8 +1082,13 @@ export default function App() {
         autoScheduledTasks.current.add(scheduleKey);
         const [hh, mm] = t.dueTime.split(":").map(Number);
         const startHour = hh + (mm / 60);
+        let endHour = startHour + 1;
+        if (t.endTime) {
+          const [eh, em] = t.endTime.split(":").map(Number);
+          endHour = eh + (em / 60);
+        }
         const color = pColors[t.priority] || "#5B8DEF";
-        createTimeBlockFromTask({ taskId: t.id, title: t.title, color, startHour });
+        createTimeBlockFromTask({ taskId: t.id, title: t.title, color, startHour, endHour });
       } else {
         autoScheduledTasks.current.add(scheduleKey);
       }
@@ -1360,8 +1367,12 @@ export default function App() {
             <input type="date" value={newTaskDueDate} onChange={e => setNewTaskDueDate(e.target.value)} style={inputStyle} />
           </div>
           <div style={{ flex:1 }}>
-            <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>Due Time</label>
+            <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>Start Time</label>
             <input type="time" value={newTaskDueTime} onChange={e => setNewTaskDueTime(e.target.value)} style={inputStyle} />
+          </div>
+          <div style={{ flex:1 }}>
+            <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>End Time</label>
+            <input type="time" value={newTaskEndTime} onChange={e => setNewTaskEndTime(e.target.value)} style={inputStyle} />
           </div>
         </div>
         <div style={{ display:"flex",gap:14,marginBottom:14 }}>
@@ -1493,8 +1504,12 @@ export default function App() {
             <input type="date" value={editingTask.dueDate || ""} onChange={e => setEditingTask({ ...editingTask, dueDate: e.target.value })} style={inputStyle} />
           </div>
           <div style={{ flex:1 }}>
-            <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>Due Time</label>
+            <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>Start Time</label>
             <input type="time" value={editingTask.dueTime || ""} onChange={e => setEditingTask({ ...editingTask, dueTime: e.target.value })} style={inputStyle} />
+          </div>
+          <div style={{ flex:1 }}>
+            <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>End Time</label>
+            <input type="time" value={editingTask.endTime || ""} onChange={e => setEditingTask({ ...editingTask, endTime: e.target.value })} style={inputStyle} />
           </div>
         </div>
         <div style={{ display:"flex",gap:14,marginBottom:14 }}>
