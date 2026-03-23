@@ -19,22 +19,10 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   },
 })
 
-/** Invoke an edge function with a fresh auth token */
+/** Invoke an edge function after ensuring fresh auth */
 export const invokeFunction = async (name, options = {}) => {
-  // Force token refresh to avoid expired-token 401s
-  const { data: { session }, error } = await supabase.auth.refreshSession()
-  if (error || !session) {
-    // Fallback: try cached session
-    const cached = await supabase.auth.getSession()
-    const token = cached.data?.session?.access_token
-    if (!token) throw new Error('Not authenticated')
-    return supabase.functions.invoke(name, {
-      ...options,
-      headers: { ...options.headers, Authorization: `Bearer ${token}` },
-    })
-  }
-  return supabase.functions.invoke(name, {
-    ...options,
-    headers: { ...options.headers, Authorization: `Bearer ${session.access_token}` },
-  })
+  // Refresh session so the client has a valid access token
+  await supabase.auth.refreshSession()
+  // Let the Supabase client attach its own auth + apikey headers
+  return supabase.functions.invoke(name, options)
 }
