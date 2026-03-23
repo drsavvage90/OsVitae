@@ -801,7 +801,7 @@ export default function App() {
     if (!phoneCheck.valid) { flash(phoneCheck.error); return; }
     setProfileSaving(true);
     try {
-      const { data, error } = await supabase.functions.invoke("profile", {
+      const resp = await supabase.functions.invoke("profile", {
         body: {
           action: "write",
           full_name: sanitizeText(profileData.full_name, MAX_NAME) || null,
@@ -816,15 +816,16 @@ export default function App() {
           country: sanitizeText(profileData.country, MAX_NAME) || null,
         },
       });
-      if (error) throw error;
+      const data = resp?.data;
+      const error = resp?.error;
       if (data?.error) throw new Error(data.error);
+      if (error) throw error;
       flash("Profile saved!");
     } catch (e) {
       logger.error("Failed to save profile:", e);
       flash("Failed to save profile");
-    } finally {
-      setProfileSaving(false);
     }
+    setProfileSaving(false);
   };
 
   const exportData = async () => {
@@ -1188,6 +1189,15 @@ export default function App() {
   };
 
   useEffect(() => { fetchAppleStatus(); fetchProfile(); loadFromSupabase(); }, []);
+
+  // Auto-sync with Apple Calendar every 5 minutes when connected
+  useEffect(() => {
+    if (!appleConnected) return;
+    const interval = setInterval(() => {
+      syncAll();
+    }, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [appleConnected]);
 
   // Persist gamification stats to profile when they change
   const statsLoadedRef = useRef(false);
