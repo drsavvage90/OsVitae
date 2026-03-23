@@ -1,4 +1,4 @@
-import { Flame, Check, Play, ChevronRight, Inbox as InboxIcon, Sun, Sunset, Moon } from "lucide-react";
+import { Flame, Check, Play, ChevronRight, Inbox as InboxIcon, Sun, Sunset, Moon, AlertTriangle } from "lucide-react";
 import { Glass, Ring, Btn } from "../ui";
 import { supabase } from "../../lib/supabase";
 import { getUserId } from "../../lib/getUserId";
@@ -11,6 +11,8 @@ const SECTIONS = [
 ];
 
 function TodaySchedule({ tasks, TaskRow, setNewTaskWs, setShowNewTask }) {
+  const today = new Date().toISOString().split("T")[0];
+  const todayTasks = tasks.filter(t => t.dueDate === today);
   // Determine which section is "now"
   const hour = new Date().getHours();
   const activeSection = hour < 12 ? "morning" : hour < 17 ? "afternoon" : "evening";
@@ -23,9 +25,7 @@ function TodaySchedule({ tasks, TaskRow, setNewTaskWs, setShowNewTask }) {
       </div>
       <div style={{ display:"flex",flexDirection:"column",gap:14 }}>
         {SECTIONS.map(({ key, label, icon: Icon, color }) => {
-          const sectionTasks = tasks.filter(t => (t.section || "morning") === key);
-          const undone = sectionTasks.filter(t => !t.done);
-          const done = sectionTasks.filter(t => t.done);
+          const undone = todayTasks.filter(t => (t.section || "morning") === key && !t.done);
           const isActive = key === activeSection;
           return (
             <Glass key={key} style={{
@@ -33,7 +33,7 @@ function TodaySchedule({ tasks, TaskRow, setNewTaskWs, setShowNewTask }) {
               border: isActive ? `1.5px solid ${color}33` : undefined,
               background: isActive ? `${color}06` : undefined,
             }}>
-              <div style={{ display:"flex",alignItems:"center",gap:10,marginBottom: undone.length > 0 || done.length > 0 ? 12 : 0 }}>
+              <div style={{ display:"flex",alignItems:"center",gap:10,marginBottom: undone.length > 0 ? 12 : 0 }}>
                 <div style={{
                   width:30,height:30,borderRadius:8,
                   background:`${color}18`,
@@ -48,19 +48,13 @@ function TodaySchedule({ tasks, TaskRow, setNewTaskWs, setShowNewTask }) {
                   <div style={{ fontFamily:"var(--mono)",fontSize:9,color,fontWeight:700,background:`${color}15`,padding:"3px 8px",borderRadius:6,textTransform:"uppercase" }}>Now</div>
                 )}
                 <div style={{ fontFamily:"var(--mono)",fontSize:10,color:"var(--muted)" }}>
-                  {done.length}/{sectionTasks.length}
+                  {undone.length}
                 </div>
               </div>
-              {undone.length === 0 && done.length === 0 && (
-                <div style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",textAlign:"center",padding:"4px 0" }}>No tasks</div>
+              {undone.length === 0 && (
+                <div style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",textAlign:"center",padding:"4px 0" }}>All done!</div>
               )}
               {undone.map((task, i) => (
-                <TaskRow key={task.id} task={task} idx={i} />
-              ))}
-              {done.length > 0 && undone.length > 0 && (
-                <div style={{ borderTop:"1px solid var(--subtle-bg)",marginTop:8,paddingTop:8 }} />
-              )}
-              {done.map((task, i) => (
                 <TaskRow key={task.id} task={task} idx={i} />
               ))}
             </Glass>
@@ -153,6 +147,24 @@ export default function TodayPage({
 
         {/* Sidebar */}
         <div className="today-sidebar" style={{ width:280,flexShrink:0 }}>
+          {/* Overdue Tasks */}
+          {(() => {
+            const today = new Date().toISOString().split("T")[0];
+            const overdue = tasks.filter(t => !t.done && t.dueDate && t.dueDate < today);
+            return overdue.length > 0 ? (
+              <Glass style={{ padding:"18px 18px 14px 18px",marginBottom:14,background:"rgba(239,68,68,0.04)",border:"1px solid rgba(239,68,68,0.12)" }}>
+                <div style={{ display:"flex",alignItems:"center",gap:8,marginBottom:12 }}>
+                  <AlertTriangle size={14} color="#EF4444" />
+                  <h3 style={{ fontFamily:"var(--heading)",fontSize:13,color:"#EF4444",margin:0,fontWeight:700 }}>Overdue ({overdue.length})</h3>
+                </div>
+                <div style={{ maxHeight:250,overflowY:"auto",paddingRight:4 }}>
+                  {overdue.map((task, i) => (
+                    <TaskRow key={task.id} task={task} idx={i} />
+                  ))}
+                </div>
+              </Glass>
+            ) : null;
+          })()}
           {/* Today's Habits */}
           <Glass style={{ padding:18,marginBottom:14 }}>
             <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10 }}>
