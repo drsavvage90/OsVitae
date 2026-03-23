@@ -883,6 +883,12 @@ export default function App() {
         setLastSyncAt(data.last_sync_at);
         setSelectedCalendarId(data.selected_calendar_id || "");
         setSelectedRemindersId(data.selected_reminders_id || "");
+        // Load calendar lists so dropdowns work on any device
+        try {
+          const { data: discData } = await supabase.functions.invoke("caldav-discover", { body: {} });
+          if (discData?.calendars) setAppleCalendars(discData.calendars || []);
+          if (discData?.reminderLists) setAppleReminderLists(discData.reminderLists || []);
+        } catch (_discErr) { /* calendar list load is best-effort */ }
       }
     } catch (_e) { /* not connected */ }
   };
