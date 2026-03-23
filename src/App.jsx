@@ -1202,8 +1202,8 @@ export default function App() {
       if (session) {
         fetchAppleStatus();
         fetchProfile();
+        loadFromSupabase();
       }
-      loadFromSupabase();
     });
   }, []);
 
