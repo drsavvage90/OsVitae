@@ -818,7 +818,6 @@ export default function App() {
           country: sanitizeText(profileData.country, MAX_NAME) || null,
         },
       });
-      logger.info("Profile save response:", JSON.stringify(resp));
       const data = resp?.data;
       const error = resp?.error;
       if (data?.error) throw new Error(data.error);
