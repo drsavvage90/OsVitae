@@ -1196,7 +1196,16 @@ export default function App() {
     }
   };
 
-  useEffect(() => { fetchAppleStatus(); fetchProfile(); loadFromSupabase(); }, []);
+  useEffect(() => {
+    // Wait for auth session to be ready before calling edge functions
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        fetchAppleStatus();
+        fetchProfile();
+      }
+      loadFromSupabase();
+    });
+  }, []);
 
   // Auto-sync with Apple Calendar every 5 minutes when connected
   useEffect(() => {
