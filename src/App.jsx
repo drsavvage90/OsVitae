@@ -818,14 +818,15 @@ export default function App() {
           country: sanitizeText(profileData.country, MAX_NAME) || null,
         },
       });
+      logger.info("Profile save response:", JSON.stringify(resp));
       const data = resp?.data;
       const error = resp?.error;
       if (data?.error) throw new Error(data.error);
-      if (error) throw error;
+      if (error) throw new Error(typeof error === "string" ? error : error?.message || JSON.stringify(error));
       flash("Profile saved!");
     } catch (e) {
-      logger.error("Failed to save profile:", e);
-      flash("Failed to save profile");
+      logger.error("Failed to save profile:", e?.message || e);
+      flash("Failed to save profile: " + (e?.message || "unknown error"));
     }
     setProfileSaving(false);
   };
@@ -1197,14 +1198,17 @@ export default function App() {
   };
 
   useEffect(() => {
-    // Wait for auth session to be ready before calling edge functions
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    // Load data once auth is fully ready (token refreshed if needed)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (session) {
         fetchAppleStatus();
         fetchProfile();
         loadFromSupabase();
+        // Only need the first valid session event
+        subscription.unsubscribe();
       }
     });
+    return () => subscription.unsubscribe();
   }, []);
 
   // Auto-sync with Apple Calendar every 5 minutes when connected
