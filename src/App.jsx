@@ -19,6 +19,7 @@ import { useHabits, daysForFrequency } from "./hooks/useHabits";
 import { useInbox } from "./hooks/useInbox";
 import { useWiki } from "./hooks/useWiki";
 import { useFinance } from "./hooks/useFinance";
+import { useHousehold } from "./hooks/useHousehold";
 import Sidebar from "./components/Sidebar";
 import RewardsPage from "./components/pages/RewardsPage";
 import AllTasksPage from "./components/pages/AllTasksPage";
@@ -218,6 +219,11 @@ export default function App() {
     customCategories, setCustomCategories, getCategories,
     addCategory, renameCategory, deleteCategory, seedDefaultCategories,
   } = useFinance(flash);
+
+  const {
+    household, members: householdMembers, pendingInvites, incomingInvite,
+    loading: householdLoading, createHousehold, inviteMember, acceptInvite, declineInvite,
+  } = useHousehold(flash);
 
   // Sidebar is hidden on tablets via CSS (hamburger menu used instead)
 
@@ -1332,7 +1338,7 @@ export default function App() {
           {page === "inbox" && <InboxPage inbox={inbox} newInboxText={newInboxText} setNewInboxText={setNewInboxText} addInboxItem={addInboxItem} triageInbox={triageInbox} dismissInbox={dismissInbox} updateInboxItem={updateInboxItem} setTasks={setTasks} flash={flash} inputStyle={inputStyle} />}
           {page === "wiki" && <WikiPage wiki={wiki} setShowNewWiki={setShowNewWiki} goWiki={goWiki} />}
           {page === "wikiArticle" && <WikiArticlePage activeWiki={activeWiki} setPage={setPage} editingWiki={editingWiki} setEditingWiki={setEditingWiki} editWikiContent={editWikiContent} setEditWikiContent={setEditWikiContent} saveWikiEdit={saveWikiEdit} deleteWikiArticle={deleteWikiArticle} inputStyle={inputStyle} />}
-          {page === "settings" && <SettingsPage profileData={profileData} setProfileData={setProfileData} saveProfile={saveProfile} profileSaving={profileSaving} themeName={themeName} exportData={exportData} exporting={exporting} deleteAccount={deleteAccount} deleting={deleting} inputStyle={inputStyle} />}
+          {page === "settings" && <SettingsPage profileData={profileData} setProfileData={setProfileData} saveProfile={saveProfile} profileSaving={profileSaving} themeName={themeName} exportData={exportData} exporting={exporting} deleteAccount={deleteAccount} deleting={deleting} inputStyle={inputStyle} household={household} householdMembers={householdMembers} pendingInvites={pendingInvites} incomingInvite={incomingInvite} householdLoading={householdLoading} createHousehold={createHousehold} inviteMember={inviteMember} acceptInvite={acceptInvite} declineInvite={declineInvite} />}
         </div>
       </div>
 
