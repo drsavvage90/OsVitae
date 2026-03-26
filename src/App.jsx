@@ -1026,7 +1026,7 @@ export default function App() {
 
     if (dbBillPayments) {
       const payments = {};
-      dbBillPayments.forEach(p => { payments[`${p.bill_id}-${p.month_key}`] = true; });
+      dbBillPayments.forEach(p => { payments[`${p.bill_id}-${p.month_key}`] = p.paid_count || 1; });
       setBillPayments(payments);
     }
 

@@ -143,17 +143,21 @@ export function useFinance(flash) {
     if (error) { logger.error("Failed to save income:", error); setTransactions(prev => prev.filter(t => t.id !== incId)); flash("Failed to save income."); }
   };
 
-  const togglePaid = async (billId, monthKey) => {
+  const togglePaid = async (billId, monthKey, totalDueDates) => {
     const key = `${billId}-${monthKey}`;
-    const wasPaid = billPayments[key];
-    setBillPayments(prev => ({ ...prev, [key]: !prev[key] }));
-    flash(wasPaid ? "Marked unpaid" : "Marked paid!");
+    const current = billPayments[key] || 0; // 0 = unpaid, 1..n = paid count
+    const max = totalDueDates || 1;
+    const next = current >= max ? 0 : current + 1;
+    setBillPayments(prev => ({ ...prev, [key]: next }));
+    flash(next === 0 ? "Marked unpaid" : next < max ? `${next} of ${max} paid` : "Fully paid!");
     const userId = await getUserId();
     if (!userId) return;
-    if (wasPaid) {
+    if (next === 0) {
       await supabase.from("bill_payments").delete().eq("bill_id", billId).eq("month_key", monthKey);
+    } else if (current === 0) {
+      await supabase.from("bill_payments").insert({ user_id: userId, bill_id: billId, month_key: monthKey, paid_count: next });
     } else {
-      await supabase.from("bill_payments").insert({ user_id: userId, bill_id: billId, month_key: monthKey });
+      await supabase.from("bill_payments").update({ paid_count: next }).eq("bill_id", billId).eq("month_key", monthKey);
     }
   };
 

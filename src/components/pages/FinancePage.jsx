@@ -193,8 +193,16 @@ export default function FinancePage({
         }
         const currentMonthKey = months.find(m => m.isCurrent).key;
         const totalBillsAmount = bills.reduce((s, b) => s + b.amount, 0);
-        const paidThisMonth = bills.filter(b => billPayments[`${b.id}-${currentMonthKey}`]).length;
-        const paidAmountThisMonth = bills.filter(b => billPayments[`${b.id}-${currentMonthKey}`]).reduce((s, b) => s + b.amount, 0);
+        const paidThisMonth = bills.filter(b => {
+          const dueDays = b.dueDays || [b.dueDay || 1];
+          const paidCount = billPayments[`${b.id}-${currentMonthKey}`] || 0;
+          return paidCount >= dueDays.length;
+        }).length;
+        const paidAmountThisMonth = bills.reduce((s, b) => {
+          const dueDays = b.dueDays || [b.dueDay || 1];
+          const paidCount = billPayments[`${b.id}-${currentMonthKey}`] || 0;
+          return s + (b.amount * Math.min(paidCount, dueDays.length) / dueDays.length);
+        }, 0);
         const sortedBills = [...bills].sort((a, b) => a.dueDay - b.dueDay);
         const cellW = 54;
         return (
@@ -286,17 +294,27 @@ export default function FinancePage({
                       </td>
                       <td style={{ padding:"10px 8px",textAlign:"right",fontFamily:"var(--mono)",fontSize:12,fontWeight:700,color:"var(--text)" }}>${bill.amount.toFixed(2)}</td>
                       {months.map(m => {
-                        const paid = !!billPayments[`${bill.id}-${m.key}`];
+                        const dueDays = bill.dueDays || [bill.dueDay || 1];
+                        const totalDue = dueDays.length;
+                        const paidCount = billPayments[`${bill.id}-${m.key}`] || 0;
+                        const fullyPaid = paidCount >= totalDue;
+                        const partialPaid = paidCount > 0 && paidCount < totalDue;
                         return (
                         <td key={m.key} style={{ padding:"6px 0",textAlign:"center",background:m.isCurrent?"rgba(34,197,94,0.04)":"transparent" }}>
-                          <div onClick={() => togglePaid(bill.id, m.key)} style={{
+                          <div onClick={() => togglePaid(bill.id, m.key, totalDue)} style={{
                             width:24,height:24,borderRadius:6,margin:"0 auto",cursor:"pointer",
-                            border:paid?"none":"2px solid var(--checkbox-border)",
-                            background:paid?"#22C55E":"transparent",
+                            border:fullyPaid||partialPaid?"none":"2px solid var(--checkbox-border)",
+                            background:fullyPaid?"#22C55E":partialPaid?"#FBBF24":"transparent",
                             display:"flex",alignItems:"center",justifyContent:"center",
                             transition:"all 0.15s",
+                            position:"relative",overflow:"hidden",
                           }}>
-                            {paid && <Check size={14} color="#fff"/>}
+                            {fullyPaid && <Check size={14} color="#fff"/>}
+                            {partialPaid && (
+                              <svg width="24" height="24" viewBox="0 0 24 24" style={{ position:"absolute" }}>
+                                <line x1="4" y1="20" x2="20" y2="4" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"/>
+                              </svg>
+                            )}
                           </div>
                         </td>
                         );
@@ -318,7 +336,7 @@ export default function FinancePage({
                     <td style={{ padding:"10px 16px",fontFamily:"var(--mono)",fontSize:11,fontWeight:700,color:"var(--muted)",textTransform:"uppercase",letterSpacing:0.5,position:"sticky",left:0,background:"var(--card-bg)" }}>Total</td>
                     <td style={{ padding:"10px 8px",textAlign:"right",fontFamily:"var(--mono)",fontSize:12,fontWeight:800,color:"var(--text)" }}>${totalBillsAmount.toFixed(2)}</td>
                     {months.map(m => {
-                      const paidInMonth = sortedBills.filter(b => billPayments[`${b.id}-${m.key}`]).length;
+                      const paidInMonth = sortedBills.filter(b => { const dd = b.dueDays || [b.dueDay || 1]; return (billPayments[`${b.id}-${m.key}`] || 0) >= dd.length; }).length;
                       return (
                       <td key={m.key} style={{ padding:"10px 0",textAlign:"center",fontFamily:"var(--mono)",fontSize:10,fontWeight:700,color:paidInMonth===sortedBills.length&&sortedBills.length>0?"#22C55E":"var(--muted)",background:m.isCurrent?"rgba(34,197,94,0.04)":"transparent" }}>
                         {paidInMonth}/{sortedBills.length}
