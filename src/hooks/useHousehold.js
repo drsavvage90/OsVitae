@@ -91,8 +91,11 @@ export function useHousehold(flash) {
       .from("household_members")
       .insert({ household_id: householdId, user_id: userId, role: "owner" });
     if (mErr) { logger.error("Failed to join household:", mErr); flash("Failed to create household."); return; }
+    // Set state immediately so UI updates without waiting for reload
+    setHousehold({ id: householdId, name, role: "owner" });
+    setMembers([{ userId, role: "owner", name: "You", isMe: true }]);
+    setLoading(false);
     flash("Household created!");
-    await loadHousehold();
   };
 
   const inviteMember = async (email) => {
