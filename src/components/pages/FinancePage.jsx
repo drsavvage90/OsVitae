@@ -65,7 +65,7 @@ export default function FinancePage({
 
       {financeTab === "Transactions" && (
         <div>
-          {sortedTransactions.map((tx,i) => { const cat = getCat(tx.category); return (
+          {sortedTransactions.filter(tx => tx.type === "expense" || (tx.type === "income" && !tx.recurring)).map((tx,i) => { const cat = getCat(tx.category); return (
             <Glass key={tx.id} style={{ padding:16,marginBottom:8,display:"flex",alignItems:"center",gap:14,animation:`slideUp 0.3s ${i*0.04}s both ease-out` }}>
               <div style={{ width:40,height:40,borderRadius:12,background:`${cat.color}14`,display:"flex",alignItems:"center",justifyContent:"center",color:cat.color }}>
                 {tx.type==="income"?<ArrowUpRight size={20}/>:<ArrowDownRight size={20}/>}
