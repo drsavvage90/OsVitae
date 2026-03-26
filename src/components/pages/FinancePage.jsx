@@ -222,7 +222,7 @@ export default function FinancePage({
             </Glass>
             <Glass style={{ padding:18,textAlign:"center" }}>
               <div style={{ fontFamily:"var(--mono)",fontSize:9,color:"var(--muted)",textTransform:"uppercase",letterSpacing:1,marginBottom:4 }}>Remaining</div>
-              <div style={{ fontFamily:"var(--heading)",fontSize:28,fontWeight:800,color:(totalBillsAmount-paidAmountThisMonth)>0?"#EF4444":"#22C55E" }}>${(totalBillsAmount - paidAmountThisMonth).toLocaleString("en-US",{minimumFractionDigits:2})}</div>
+              <div style={{ fontFamily:"var(--heading)",fontSize:28,fontWeight:800,color:(totalBillsAmount-paidAmountThisMonth)<0?"#EF4444":"#5B8DEF" }}>${(totalBillsAmount - paidAmountThisMonth).toLocaleString("en-US",{minimumFractionDigits:2})}</div>
             </Glass>
           </div>
 
