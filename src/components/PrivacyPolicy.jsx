@@ -29,7 +29,7 @@ export default function PrivacyPolicy() {
       <p style={p}>Your data is never sold, shared with third parties, or used for advertising. Data is only transmitted between your browser and our Supabase backend over encrypted HTTPS connections.</p>
 
       <h3 style={h}>Security</h3>
-      <p style={p}>All API requests require a valid JWT. CORS is restricted to our production domain. Edge Functions validate authentication server-side. Sessions automatically expire after 30 minutes of inactivity.</p>
+      <p style={p}>All API requests require a valid JWT. CORS is restricted to our production domain. Edge Functions validate authentication server-side. Sessions automatically expire after 7 days of inactivity.</p>
 
       <h3 style={h}>Contact</h3>
       <p style={p}>For privacy questions or data requests, email <strong>privacy@osvitae.app</strong> or reach out via the project repository.</p>

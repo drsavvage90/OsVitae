@@ -8,7 +8,7 @@ const AuthContext = createContext({
   signOut: async () => {},
 })
 
-const IDLE_TIMEOUT_MS = 30 * 60 * 1000 // 30 minutes
+const IDLE_TIMEOUT_MS = 7 * 24 * 60 * 60 * 1000 // 7 days
 
 export function AuthProvider({ children }) {
   const [session, setSession] = useState(null)
