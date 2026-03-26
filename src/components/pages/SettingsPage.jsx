@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { User, Save, Download, Trash2 } from "lucide-react";
+import { User, Save, Download, Trash2, Link } from "lucide-react";
 import { Glass } from "../ui";
 import PrivacyPolicy from "../PrivacyPolicy";
+import { supabase } from "../../lib/supabase";
 
 export default function SettingsPage({
   profileData, setProfileData, saveProfile, profileSaving,
@@ -11,6 +12,12 @@ export default function SettingsPage({
 }) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [linkEmail, setLinkEmail] = useState("");
+  const [linkPassword, setLinkPassword] = useState("");
+  const [linkConfirm, setLinkConfirm] = useState("");
+  const [linkLoading, setLinkLoading] = useState(false);
+  const [linkMessage, setLinkMessage] = useState("");
+  const [linkError, setLinkError] = useState("");
   return (
     <div style={{ maxWidth: 600 }}>
       <h2 style={{ fontFamily:"var(--heading)",fontSize:22,fontWeight:800,color:"var(--text)",marginBottom:24 }}>Settings</h2>
@@ -47,6 +54,45 @@ export default function SettingsPage({
           <Save size={14} />
           {profileSaving ? "Saving..." : "Save Profile"}
         </button>
+      </Glass>
+
+      {/* Link Email & Password */}
+      <Glass style={{ padding:24,marginBottom:20 }}>
+        <div style={{ display:"flex",alignItems:"center",gap:12,marginBottom:20 }}>
+          <div style={{ width:40,height:40,borderRadius:12,background:"var(--primary)",display:"flex",alignItems:"center",justifyContent:"center" }}>
+            <Link size={20} color="#fff" />
+          </div>
+          <div>
+            <div style={{ fontFamily:"var(--heading)",fontSize:15,fontWeight:700,color:"var(--text)" }}>Link Email &amp; Password</div>
+            <div style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)" }}>Add email/password login to your Apple account</div>
+          </div>
+        </div>
+
+        <form onSubmit={async (e) => {
+          e.preventDefault();
+          setLinkError(""); setLinkMessage(""); setLinkLoading(true);
+          if (linkPassword.length < 6) { setLinkError("Password must be at least 6 characters"); setLinkLoading(false); return; }
+          if (linkPassword !== linkConfirm) { setLinkError("Passwords do not match"); setLinkLoading(false); return; }
+          const { error } = await supabase.auth.updateUser({ email: linkEmail, password: linkPassword });
+          if (error) { setLinkError(error.message); } else { setLinkMessage("Email linked! Check your inbox to confirm the email address."); setLinkEmail(""); setLinkPassword(""); setLinkConfirm(""); }
+          setLinkLoading(false);
+        }} style={{ display:"flex",flexDirection:"column",gap:12 }}>
+          <input type="email" placeholder="Email" value={linkEmail} onChange={e => setLinkEmail(e.target.value)} required style={inputStyle} />
+          <input type="password" placeholder="Password" value={linkPassword} onChange={e => setLinkPassword(e.target.value)} required style={inputStyle} />
+          <input type="password" placeholder="Confirm password" value={linkConfirm} onChange={e => setLinkConfirm(e.target.value)} required style={inputStyle} />
+          {linkError && <p style={{ color:"#EF4444",fontSize:13,margin:0 }}>{linkError}</p>}
+          {linkMessage && <p style={{ color:"#10B981",fontSize:13,margin:0 }}>{linkMessage}</p>}
+          <button type="submit" disabled={linkLoading} style={{
+            padding:"10px 20px",borderRadius:10,border:"none",
+            background:themeName === "halo" ? "linear-gradient(135deg, #4ADE80, #FFB000)" : "linear-gradient(135deg, #6366F1, #8B5CF6, #A855F7)",color:"var(--btn-text)",
+            fontFamily:"var(--body)",fontSize:13,fontWeight:600,cursor:"pointer",
+            display:"flex",alignItems:"center",gap:8,
+            opacity: linkLoading ? 0.6 : 1,
+          }}>
+            <Link size={14} />
+            {linkLoading ? "Linking..." : "Link Email & Password"}
+          </button>
+        </form>
       </Glass>
 
       {/* Your Data */}
