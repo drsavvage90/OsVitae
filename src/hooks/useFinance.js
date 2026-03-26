@@ -166,7 +166,7 @@ export function useFinance(flash) {
     const billId = crypto.randomUUID();
     const amt = billAmtCheck.value;
     const bName = newBillName, bDueDay = parseInt(newBillDueDay), bCat = newBillCategory;
-    setBills(prev => [...prev, { id: billId, name: bName, amount: amt, dueDay: bDueDay, category: bCat }]);
+    setBills(prev => [...prev, { id: billId, name: bName, amount: amt, dueDay: bDueDay, dueDays: [bDueDay], category: bCat }]);
     setBudgets(prev => {
       const existing = prev.find(b => b.categoryId === bCat);
       if (existing) return prev.map(b => b.categoryId === bCat ? { ...b, limit: b.limit + amt } : b);
@@ -176,7 +176,7 @@ export function useFinance(flash) {
     flash("Bill added & budget updated!");
     const userId = await getUserId();
     if (!userId) return;
-    const { error } = await supabase.from("bills").insert({ id: billId, user_id: userId, name: bName, amount: amt, due_day: bDueDay, category: bCat });
+    const { error } = await supabase.from("bills").insert({ id: billId, user_id: userId, name: bName, amount: amt, due_day: bDueDay, due_days: [bDueDay], category: bCat });
     if (error) { logger.error("Failed to save bill:", error); setBills(prev => prev.filter(b => b.id !== billId)); flash("Failed to save bill."); }
     const existingBudget = budgets.find(b => b.categoryId === bCat);
     const newLimit = existingBudget ? existingBudget.limit + amt : amt;
@@ -217,6 +217,7 @@ export function useFinance(flash) {
     if (updates.name !== undefined) dbUpdates.name = updates.name;
     if (updates.amount !== undefined) dbUpdates.amount = updates.amount;
     if (updates.dueDay !== undefined) dbUpdates.due_day = updates.dueDay;
+    if (updates.dueDays !== undefined) dbUpdates.due_days = updates.dueDays;
     if (updates.category !== undefined) dbUpdates.category = updates.category;
     const { error } = await supabase.from("bills").update(dbUpdates).eq("id", id);
     if (error) { logger.error("Failed to update bill:", error); if (prev) setBills(bs => bs.map(b => b.id === id ? prev : b)); flash("Update failed."); }

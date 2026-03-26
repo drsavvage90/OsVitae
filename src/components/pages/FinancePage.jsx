@@ -281,7 +281,7 @@ export default function FinancePage({
                         <div style={{ fontFamily:"var(--heading)",fontSize:13,fontWeight:700,color:"var(--text)" }}>{bill.name}</div>
                         <div style={{ display:"flex",alignItems:"center",gap:6,marginTop:2 }}>
                           <span style={{ fontFamily:"var(--mono)",fontSize:9,color:cat.color,background:`${cat.color}14`,padding:"1px 5px",borderRadius:3,fontWeight:600 }}>{cat.label}</span>
-                          <span style={{ fontFamily:"var(--mono)",fontSize:9,color:"var(--muted)" }}>Due {bill.dueDay === 1 ? "1st" : bill.dueDay === 2 ? "2nd" : bill.dueDay === 3 ? "3rd" : `${bill.dueDay}th`}</span>
+                          <span style={{ fontFamily:"var(--mono)",fontSize:9,color:"var(--muted)" }}>Due {(bill.dueDays || [bill.dueDay]).map(d => d === 1 ? "1st" : d === 2 ? "2nd" : d === 3 ? "3rd" : `${d}th`).join(", ")}</span>
                         </div>
                       </td>
                       <td style={{ padding:"10px 8px",textAlign:"right",fontFamily:"var(--mono)",fontSize:12,fontWeight:700,color:"var(--text)" }}>${bill.amount.toFixed(2)}</td>

@@ -1020,7 +1020,7 @@ export default function App() {
     if (dbBills) {
       setBills(dbBills.map(b => ({
         id: b.id, name: b.name, amount: parseFloat(b.amount),
-        dueDay: b.due_day || 1, category: b.category || "",
+        dueDay: b.due_day || 1, dueDays: b.due_days || [b.due_day || 1], category: b.category || "",
       })));
     }
 
@@ -2064,6 +2064,8 @@ export default function App() {
       <Modal open={!!editingBill} onClose={() => setEditingBill(null)} title="Edit Bill">
         {editingBill && (() => {
           const set = (k, v) => setEditingBill(b => ({ ...b, [k]: v }));
+          const dueDays = editingBill.dueDays || [editingBill.dueDay || 1];
+          const editCats = getCategories().expense;
           return <>
             <div style={{ marginBottom:14 }}>
               <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>Name</label>
@@ -2074,12 +2076,40 @@ export default function App() {
               <input type="number" step="0.01" value={editingBill.amount} onChange={e => set("amount", parseFloat(e.target.value) || 0)} style={inputStyle} />
             </div>
             <div style={{ marginBottom:14 }}>
-              <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>Due Day (of month)</label>
-              <input type="number" min="1" max="31" value={editingBill.dueDay} onChange={e => set("dueDay", parseInt(e.target.value) || 1)} style={inputStyle} />
+              <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>Category</label>
+              <div style={{ display:"flex",flexWrap:"wrap",gap:6 }}>
+                {editCats.map(cat => (
+                  <div key={cat.id} onClick={() => set("category", cat.id)} style={{
+                    padding:"6px 12px",borderRadius:8,cursor:"pointer",
+                    background:editingBill.category===cat.id?`${cat.color}18`:"var(--hover-bg)",
+                    border:editingBill.category===cat.id?`2px solid ${cat.color}`:"2px solid transparent",
+                    fontFamily:"var(--body)",fontSize:11,fontWeight:600,color:editingBill.category===cat.id?cat.color:"var(--muted)",
+                    transition:"all 0.15s",
+                  }}>{cat.label}</div>
+                ))}
+              </div>
+            </div>
+            <div style={{ marginBottom:14 }}>
+              <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>Due Days (of month)</label>
+              <div style={{ display:"flex",flexWrap:"wrap",gap:6,marginBottom:8 }}>
+                {dueDays.map((day, idx) => (
+                  <div key={idx} style={{ display:"flex",alignItems:"center",gap:4,background:"var(--subtle-bg)",borderRadius:8,padding:"4px 8px" }}>
+                    <input type="number" min="1" max="31" value={day} onChange={e => {
+                      const newDays = [...dueDays]; newDays[idx] = parseInt(e.target.value) || 1;
+                      set("dueDays", newDays); set("dueDay", newDays[0]);
+                    }} style={{ width:50,padding:"4px 6px",borderRadius:6,border:"1px solid var(--border)",fontFamily:"var(--mono)",fontSize:12,outline:"none",background:"transparent",color:"var(--text)",textAlign:"center" }} />
+                    {dueDays.length > 1 && <div onClick={() => { const newDays = dueDays.filter((_,i) => i !== idx); set("dueDays", newDays); set("dueDay", newDays[0]); }} style={{ cursor:"pointer",color:"var(--muted)",fontSize:12 }}><X size={12}/></div>}
+                  </div>
+                ))}
+                <div onClick={() => { set("dueDays", [...dueDays, 15]); }} style={{
+                  display:"flex",alignItems:"center",justifyContent:"center",width:32,height:32,borderRadius:8,
+                  border:"2px dashed var(--border)",cursor:"pointer",color:"var(--muted)",fontSize:14,
+                }} title="Add another due date">+</div>
+              </div>
             </div>
             <div style={{ display:"flex",justifyContent:"flex-end",gap:10 }}>
               <Btn onClick={() => setEditingBill(null)}>Cancel</Btn>
-              <Btn primary onClick={() => updateBill(editingBill.id, { name: editingBill.name, amount: editingBill.amount, dueDay: editingBill.dueDay, category: editingBill.category })}>Save</Btn>
+              <Btn primary onClick={() => updateBill(editingBill.id, { name: editingBill.name, amount: editingBill.amount, dueDay: dueDays[0], dueDays, category: editingBill.category })}>Save</Btn>
             </div>
           </>;
         })()}
