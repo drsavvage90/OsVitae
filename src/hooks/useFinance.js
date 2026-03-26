@@ -3,11 +3,73 @@ import { supabase } from "../lib/supabase";
 import { getUserId } from "../lib/getUserId";
 import { logger } from "../lib/logger";
 import { validateAmount, validateName, sanitizeText } from "../lib/validate";
-import { INIT_TRANSACTIONS, INIT_BUDGETS } from "../lib/constants";
+import { INIT_TRANSACTIONS, INIT_BUDGETS, FINANCE_CATEGORIES } from "../lib/constants";
 
 export function useFinance(flash) {
   const [transactions, setTransactions] = useState(INIT_TRANSACTIONS);
   const [budgets, setBudgets] = useState(INIT_BUDGETS);
+  const [customCategories, setCustomCategories] = useState(null); // null = not loaded yet
+
+  // Merged categories: custom overrides defaults once loaded
+  const getCategories = () => {
+    if (!customCategories) return FINANCE_CATEGORIES;
+    const income = customCategories.filter(c => c.type === "income").sort((a, b) => a.sortOrder - b.sortOrder);
+    const expense = customCategories.filter(c => c.type === "expense").sort((a, b) => a.sortOrder - b.sortOrder);
+    return {
+      income: income.length > 0 ? income : FINANCE_CATEGORIES.income,
+      expense: expense.length > 0 ? expense : FINANCE_CATEGORIES.expense,
+    };
+  };
+
+  const addCategory = async (type, label) => {
+    const catId = `custom_${crypto.randomUUID().slice(0, 8)}`;
+    const colors = ["#EF4444","#F97316","#FBBF24","#22C55E","#14B8A6","#6366F1","#8B5CF6","#EC4899","#5B8DEF","#94A3B8"];
+    const color = colors[Math.floor(Math.random() * colors.length)];
+    const cats = getCategories();
+    const sortOrder = (cats[type]?.length || 0);
+    const newCat = { id: catId, label, color, icon: "DollarSign", type, sortOrder };
+    setCustomCategories(prev => [...(prev || []), newCat]);
+    flash("Category added!");
+    const userId = await getUserId();
+    if (!userId) return;
+    const { error } = await supabase.from("finance_categories").insert({
+      user_id: userId, category_id: catId, type, label, color, icon: "DollarSign", sort_order: sortOrder,
+    });
+    if (error) { logger.error("Failed to add category:", error); flash("Failed to save category."); }
+  };
+
+  const renameCategory = async (catId, newLabel) => {
+    setCustomCategories(prev => (prev || []).map(c => c.id === catId ? { ...c, label: newLabel } : c));
+    flash("Category renamed!");
+    const userId = await getUserId();
+    if (!userId) return;
+    const { error } = await supabase.from("finance_categories").update({ label: newLabel }).eq("user_id", userId).eq("category_id", catId);
+    if (error) logger.error("Failed to rename category:", error);
+  };
+
+  const deleteCategory = async (catId) => {
+    setCustomCategories(prev => (prev || []).filter(c => c.id !== catId));
+    flash("Category deleted!");
+    const userId = await getUserId();
+    if (!userId) return;
+    const { error } = await supabase.from("finance_categories").delete().eq("user_id", userId).eq("category_id", catId);
+    if (error) logger.error("Failed to delete category:", error);
+  };
+
+  const seedDefaultCategories = async () => {
+    const userId = await getUserId();
+    if (!userId) return;
+    const allDefaults = [
+      ...FINANCE_CATEGORIES.income.map((c, i) => ({ ...c, type: "income", sortOrder: i })),
+      ...FINANCE_CATEGORIES.expense.map((c, i) => ({ ...c, type: "expense", sortOrder: i })),
+    ];
+    setCustomCategories(allDefaults);
+    const rows = allDefaults.map(c => ({
+      user_id: userId, category_id: c.id, type: c.type, label: c.label, color: c.color, icon: c.icon, sort_order: c.sortOrder,
+    }));
+    const { error } = await supabase.from("finance_categories").insert(rows);
+    if (error) logger.error("Failed to seed categories:", error);
+  };
   const [financeTab, setFinanceTab] = useState("Transactions");
   const [showNewTransaction, setShowNewTransaction] = useState(false);
   const [newTxType, setNewTxType] = useState("expense");
@@ -188,5 +250,7 @@ export function useFinance(flash) {
     addTransaction, deleteTransaction, updateTransaction,
     saveBudget, addIncome, togglePaid,
     addBill, deleteBill, updateBill,
+    customCategories, setCustomCategories, getCategories,
+    addCategory, renameCategory, deleteCategory, seedDefaultCategories,
   };
 }

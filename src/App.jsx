@@ -8,7 +8,6 @@ import {
 import { supabase, invokeFunction } from "./lib/supabase";
 import {
   THEMES, WS_ICON_OPTIONS, WS_COLOR_OPTIONS, getWsIcon,
-  FINANCE_CATEGORIES,
   INIT_WORKSPACES, INIT_TASKS, INIT_TIME_BLOCKS,
 } from "./lib/constants";
 import { Glass, Btn, Modal, Toast } from "./components/ui";
@@ -216,6 +215,8 @@ export default function App() {
     addTransaction, deleteTransaction, updateTransaction,
     saveBudget, addIncome, togglePaid,
     addBill, deleteBill, updateBill,
+    customCategories, setCustomCategories, getCategories,
+    addCategory, renameCategory, deleteCategory, seedDefaultCategories,
   } = useFinance(flash);
 
   // Sidebar is hidden on tablets via CSS (hamburger menu used instead)
@@ -861,6 +862,7 @@ export default function App() {
       { data: dbInbox }, { data: dbWiki },
       { data: dbWsNotes }, { data: dbWsDocs },
       { data: dbTransactions }, { data: dbBills }, { data: dbBillPayments }, { data: dbBudgets },
+      { data: dbFinanceCategories },
       { data: dbProfile },
     ] = await Promise.all([
       supabase.from("time_blocks").select("*").eq("user_id", userId),
@@ -879,6 +881,7 @@ export default function App() {
       supabase.from("bills").select("*").eq("user_id", userId),
       supabase.from("bill_payments").select("*").eq("user_id", userId),
       supabase.from("budgets").select("*").eq("user_id", userId),
+      supabase.from("finance_categories").select("*").eq("user_id", userId).order("sort_order"),
       supabase.from("profiles").select("intention_text, reward_text, xp, level, streak, total_pomos_ever, total_tasks_done").eq("id", userId).single(),
     ]);
 
@@ -1031,6 +1034,15 @@ export default function App() {
       setBudgets(dbBudgets.map(b => ({
         categoryId: b.category_id, limit: parseFloat(b.budget_limit),
       })));
+    }
+
+    if (dbFinanceCategories && dbFinanceCategories.length > 0) {
+      setCustomCategories(dbFinanceCategories.map(c => ({
+        id: c.category_id, type: c.type, label: c.label, color: c.color, icon: c.icon, sortOrder: c.sort_order,
+      })));
+    } else {
+      // First load — seed defaults
+      seedDefaultCategories();
     }
 
     if (dbProfile) {
@@ -1315,7 +1327,7 @@ export default function App() {
           {page === "allTasks" && <AllTasksPage filteredTasks={filteredTasks} setShowNewTask={setShowNewTask} TaskRow={TaskRow} ws={ws} projects={projects} pColors={pColors} goTask={goTask} toggleTask={toggleTask} deleteTask={deleteTask} startFocus={startFocus} updateTaskStatus={updateTaskStatus} updateTaskField={updateTaskField} />}
           {page === "habits" && <HabitsPage habits={habits} setShowNewHabit={setShowNewHabit} toggleHabit={toggleHabit} deleteHabit={deleteHabit} setEditingHabit={setEditingHabit} />}
           {page === "calendar" && <CalendarPage timeBlocks={timeBlocks} tasks={tasks} ws={ws} projects={projects} setShowNewBlock={setShowNewBlock} deleteTimeBlock={deleteTimeBlock} setEditingBlock={setEditingBlock} goTask={goTask} updateTimeBlock={updateTimeBlock} />}
-          {page === "finance" && <FinancePage transactions={transactions} financeTab={financeTab} setFinanceTab={setFinanceTab} setShowNewTransaction={setShowNewTransaction} deleteTransaction={deleteTransaction} setEditingTransaction={setEditingTransaction} saveBudget={saveBudget} addIncome={addIncome} togglePaid={togglePaid} addBill={addBill} deleteBill={deleteBill} setEditingBill={setEditingBill} budgets={budgets} editingBudget={editingBudget} setEditingBudget={setEditingBudget} editBudgetVal={editBudgetVal} setEditBudgetVal={setEditBudgetVal} newIncomeCategory={newIncomeCategory} setNewIncomeCategory={setNewIncomeCategory} newIncomeAmount={newIncomeAmount} setNewIncomeAmount={setNewIncomeAmount} newIncomeDesc={newIncomeDesc} setNewIncomeDesc={setNewIncomeDesc} newIncomeRecurring={newIncomeRecurring} setNewIncomeRecurring={setNewIncomeRecurring} bills={bills} billPayments={billPayments} newBillName={newBillName} setNewBillName={setNewBillName} newBillAmount={newBillAmount} setNewBillAmount={setNewBillAmount} newBillDueDay={newBillDueDay} setNewBillDueDay={setNewBillDueDay} newBillCategory={newBillCategory} setNewBillCategory={setNewBillCategory} inputStyle={inputStyle} />}
+          {page === "finance" && <FinancePage transactions={transactions} financeTab={financeTab} setFinanceTab={setFinanceTab} setShowNewTransaction={setShowNewTransaction} deleteTransaction={deleteTransaction} setEditingTransaction={setEditingTransaction} saveBudget={saveBudget} addIncome={addIncome} togglePaid={togglePaid} addBill={addBill} deleteBill={deleteBill} setEditingBill={setEditingBill} budgets={budgets} editingBudget={editingBudget} setEditingBudget={setEditingBudget} editBudgetVal={editBudgetVal} setEditBudgetVal={setEditBudgetVal} newIncomeCategory={newIncomeCategory} setNewIncomeCategory={setNewIncomeCategory} newIncomeAmount={newIncomeAmount} setNewIncomeAmount={setNewIncomeAmount} newIncomeDesc={newIncomeDesc} setNewIncomeDesc={setNewIncomeDesc} newIncomeRecurring={newIncomeRecurring} setNewIncomeRecurring={setNewIncomeRecurring} bills={bills} billPayments={billPayments} newBillName={newBillName} setNewBillName={setNewBillName} newBillAmount={newBillAmount} setNewBillAmount={setNewBillAmount} newBillDueDay={newBillDueDay} setNewBillDueDay={setNewBillDueDay} newBillCategory={newBillCategory} setNewBillCategory={setNewBillCategory} inputStyle={inputStyle} getCategories={getCategories} addCategory={addCategory} renameCategory={renameCategory} deleteCategory={deleteCategory} />}
           {page === "review" && <ReviewPage tasks={tasks} inbox={inbox} habits={habits} toggleHabit={toggleHabit} goTask={goTask} pColors={pColors} />}
           {page === "inbox" && <InboxPage inbox={inbox} newInboxText={newInboxText} setNewInboxText={setNewInboxText} addInboxItem={addInboxItem} triageInbox={triageInbox} dismissInbox={dismissInbox} updateInboxItem={updateInboxItem} setTasks={setTasks} flash={flash} inputStyle={inputStyle} />}
           {page === "wiki" && <WikiPage wiki={wiki} setShowNewWiki={setShowNewWiki} goWiki={goWiki} />}
@@ -1869,7 +1881,7 @@ export default function App() {
         <div style={{ marginBottom:14 }}>
           <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>Category</label>
           <div style={{ display:"flex",flexWrap:"wrap",gap:6 }}>
-            {FINANCE_CATEGORIES[newTxType].map(cat => (
+            {getCategories()[newTxType].map(cat => (
               <div key={cat.id} onClick={() => setNewTxCategory(cat.id)} style={{
                 padding:"6px 12px",borderRadius:8,cursor:"pointer",
                 background:newTxCategory===cat.id?`${cat.color}18`:"var(--hover-bg)",
@@ -2013,7 +2025,7 @@ export default function App() {
       <Modal open={!!editingTransaction} onClose={() => setEditingTransaction(null)} title="Edit Transaction">
         {editingTransaction && (() => {
           const set = (k, v) => setEditingTransaction(t => ({ ...t, [k]: v }));
-          const cats = FINANCE_CATEGORIES[editingTransaction.type] || FINANCE_CATEGORIES.expense;
+          const cats = getCategories()[editingTransaction.type] || getCategories().expense;
           return <>
             <div style={{ marginBottom:14 }}>
               <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>Description</label>

@@ -1,6 +1,6 @@
-import { ArrowUpRight, ArrowDownRight, DollarSign, Repeat, Trash2, Receipt, Wallet, Check, X, Pencil } from "lucide-react";
+import { useState } from "react";
+import { ArrowUpRight, ArrowDownRight, DollarSign, Repeat, Trash2, Receipt, Wallet, Check, X, Pencil, Plus } from "lucide-react";
 import { Glass, Btn } from "../ui";
-import { FINANCE_CATEGORIES, ALL_FINANCE_CATS } from "../../lib/constants";
 
 export default function FinancePage({
   transactions, financeTab, setFinanceTab, setShowNewTransaction,
@@ -12,13 +12,21 @@ export default function FinancePage({
   newBillName, setNewBillName, newBillAmount, setNewBillAmount,
   newBillDueDay, setNewBillDueDay, newBillCategory, setNewBillCategory,
   inputStyle,
+  getCategories, addCategory, renameCategory, deleteCategory,
 }) {
+  const [renamingCat, setRenamingCat] = useState(null);
+  const [renameVal, setRenameVal] = useState("");
+  const [newCatName, setNewCatName] = useState("");
+  const [showAddCat, setShowAddCat] = useState(false);
+
+  const cats = getCategories();
+  const allCats = [...cats.income, ...cats.expense];
   const totalIncome = transactions.filter(t => t.type === "income").reduce((s, t) => s + t.amount, 0);
   const totalExpenses = transactions.filter(t => t.type === "expense").reduce((s, t) => s + t.amount, 0);
   const netBalance = totalIncome - totalExpenses;
   const recurringExpenses = transactions.filter(t => t.type === "expense" && t.recurring).reduce((s, t) => s + t.amount, 0);
-  const getCat = (id) => ALL_FINANCE_CATS.find(c => c.id === id) || { label: id, color: "#94A3B8" };
-  const spendingByCategory = FINANCE_CATEGORIES.expense.map(cat => {
+  const getCat = (id) => allCats.find(c => c.id === id) || { label: id, color: "#94A3B8" };
+  const spendingByCategory = cats.expense.map(cat => {
     const spent = transactions.filter(t => t.type === "expense" && t.category === cat.id).reduce((s, t) => s + t.amount, 0);
     return { ...cat, spent };
   }).filter(c => c.spent > 0).sort((a, b) => b.spent - a.spent);
@@ -111,7 +119,7 @@ export default function FinancePage({
           <Glass style={{ padding:18,marginBottom:20 }}>
             <div style={{ fontFamily:"var(--mono)",fontSize:9,color:"var(--muted)",textTransform:"uppercase",letterSpacing:1,marginBottom:14,fontWeight:600 }}>Add Income</div>
             <div style={{ display:"flex",flexWrap:"wrap",gap:6,marginBottom:12 }}>
-              {FINANCE_CATEGORIES.income.map(cat => (
+              {cats.income.map(cat => (
                 <div key={cat.id} onClick={() => setNewIncomeCategory(cat.id)} style={{
                   padding:"6px 12px",borderRadius:8,cursor:"pointer",
                   background:newIncomeCategory===cat.id?`${cat.color}18`:"var(--hover-bg)",
@@ -218,7 +226,7 @@ export default function FinancePage({
           <Glass style={{ padding:18,marginBottom:20 }}>
             <div style={{ fontFamily:"var(--mono)",fontSize:9,color:"var(--muted)",textTransform:"uppercase",letterSpacing:1,marginBottom:14,fontWeight:600 }}>Add Bill</div>
             <div style={{ display:"flex",flexWrap:"wrap",gap:6,marginBottom:12 }}>
-              {FINANCE_CATEGORIES.expense.map(cat => (
+              {cats.expense.map(cat => (
                 <div key={cat.id} onClick={() => setNewBillCategory(cat.id)} style={{
                   padding:"6px 12px",borderRadius:8,cursor:"pointer",
                   background:newBillCategory===cat.id?`${cat.color}18`:"var(--hover-bg)",
@@ -342,7 +350,7 @@ export default function FinancePage({
               <div style={{ fontFamily:"var(--heading)",fontSize:28,fontWeight:800,color:totalExpenses>budgets.reduce((s,b)=>s+b.limit,0)?"#EF4444":"#22C55E" }}>${totalExpenses.toLocaleString("en-US",{minimumFractionDigits:2})}</div>
             </Glass>
           </div>
-          {FINANCE_CATEGORIES.expense.map((cat,i) => {
+          {cats.expense.map((cat,i) => {
             const budget = budgets.find(b=>b.categoryId===cat.id); const limit = budget?budget.limit:0;
             const spent = transactions.filter(t=>t.type==="expense"&&t.category===cat.id).reduce((s,t)=>s+t.amount,0);
             const pct = limit>0?Math.min((spent/limit)*100,100):0; const over = spent>limit&&limit>0;
@@ -350,7 +358,18 @@ export default function FinancePage({
               <Glass key={cat.id} style={{ padding:16,marginBottom:8,animation:`slideUp 0.3s ${i*0.04}s both ease-out` }}>
                 <div style={{ display:"flex",alignItems:"center",gap:12,marginBottom:10 }}>
                   <div style={{ width:32,height:32,borderRadius:10,background:`${cat.color}14`,display:"flex",alignItems:"center",justifyContent:"center",color:cat.color }}><DollarSign size={16}/></div>
-                  <div style={{ flex:1 }}><span style={{ fontFamily:"var(--heading)",fontSize:14,fontWeight:700,color:"var(--text)" }}>{cat.label}</span></div>
+                  <div style={{ flex:1 }}>
+                    {renamingCat===cat.id ? (
+                      <div style={{ display:"flex",alignItems:"center",gap:4 }}>
+                        <input value={renameVal} onChange={e=>setRenameVal(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&renameVal.trim()){renameCategory(cat.id,renameVal.trim());setRenamingCat(null);}}}
+                          style={{ width:120,padding:"4px 8px",borderRadius:6,border:"1px solid var(--border)",fontFamily:"var(--heading)",fontSize:14,fontWeight:700,outline:"none",background:"var(--subtle-bg)",color:"var(--text)" }} autoFocus/>
+                        <div onClick={()=>{if(renameVal.trim()){renameCategory(cat.id,renameVal.trim());setRenamingCat(null);}}} style={{ cursor:"pointer",color:"#22C55E" }}><Check size={14}/></div>
+                        <div onClick={()=>setRenamingCat(null)} style={{ cursor:"pointer",color:"var(--muted)" }}><X size={14}/></div>
+                      </div>
+                    ) : (
+                      <span onClick={()=>{setRenamingCat(cat.id);setRenameVal(cat.label);}} style={{ fontFamily:"var(--heading)",fontSize:14,fontWeight:700,color:"var(--text)",cursor:"pointer" }} title="Click to rename">{cat.label}</span>
+                    )}
+                  </div>
                   <div style={{ display:"flex",alignItems:"center",gap:8 }}>
                     {editingBudget===cat.id ? (
                       <div style={{ display:"flex",alignItems:"center",gap:4 }}>
@@ -364,6 +383,7 @@ export default function FinancePage({
                       <>
                         <span style={{ fontFamily:"var(--mono)",fontSize:12,fontWeight:700,color:over?"#EF4444":"var(--text)" }}>${spent.toFixed(2)} / ${limit.toLocaleString()}</span>
                         <div onClick={()=>{setEditingBudget(cat.id);setEditBudgetVal(String(limit));}} style={{ cursor:"pointer",color:"var(--muted)" }}><Pencil size={12}/></div>
+                        <div onClick={()=>{if(confirm(`Delete "${cat.label}" category?`))deleteCategory(cat.id);}} style={{ cursor:"pointer",color:"var(--muted)" }}><Trash2 size={12}/></div>
                       </>
                     )}
                   </div>
@@ -375,6 +395,28 @@ export default function FinancePage({
               </Glass>
             );
           })}
+
+          {/* Add new category */}
+          {showAddCat ? (
+            <Glass style={{ padding:16,marginBottom:8,display:"flex",alignItems:"center",gap:8 }}>
+              <input value={newCatName} onChange={e=>setNewCatName(e.target.value)} placeholder="Category name"
+                onKeyDown={e=>{if(e.key==="Enter"&&newCatName.trim()){addCategory("expense",newCatName.trim());setNewCatName("");setShowAddCat(false);}}}
+                style={{ flex:1,padding:"8px 12px",borderRadius:8,border:"1px solid var(--border)",fontFamily:"var(--body)",fontSize:13,outline:"none",background:"var(--subtle-bg)",color:"var(--text)" }} autoFocus/>
+              <div onClick={()=>{if(newCatName.trim()){addCategory("expense",newCatName.trim());setNewCatName("");setShowAddCat(false);}}} style={{ cursor:"pointer",color:"#22C55E" }}><Check size={16}/></div>
+              <div onClick={()=>{setShowAddCat(false);setNewCatName("");}} style={{ cursor:"pointer",color:"var(--muted)" }}><X size={16}/></div>
+            </Glass>
+          ) : (
+            <div onClick={()=>setShowAddCat(true)} style={{
+              display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:14,borderRadius:12,
+              border:"2px dashed var(--border)",cursor:"pointer",color:"var(--muted)",
+              fontFamily:"var(--body)",fontSize:13,fontWeight:600,transition:"all 0.15s",
+            }}
+              onMouseEnter={e=>{e.currentTarget.style.borderColor="var(--primary)";e.currentTarget.style.color="var(--primary)";}}
+              onMouseLeave={e=>{e.currentTarget.style.borderColor="var(--border)";e.currentTarget.style.color="var(--muted)";}}
+            >
+              <Plus size={16}/> Add Category
+            </div>
+          )}
         </div>
       )}
 
