@@ -25,10 +25,18 @@ export default function SettingsPage({
   const [pwLoading, setPwLoading] = useState(false);
   const [householdName, setHouseholdName] = useState("");
   const [inviteEmail, setInviteEmail] = useState("");
+  const [settingsTab, setSettingsTab] = useState("general");
+  const tabStyle = (t) => ({ padding:"8px 20px",borderRadius:10,cursor:"pointer",fontFamily:"var(--body)",fontSize:13,fontWeight:600,background:settingsTab===t?"var(--text)":"transparent",color:settingsTab===t?"var(--text-on-primary)":"var(--muted)",transition:"all 0.2s" });
   return (
     <div style={{ maxWidth: 600 }}>
-      <h2 style={{ fontFamily:"var(--heading)",fontSize:22,fontWeight:800,color:"var(--text)",marginBottom:24 }}>Settings</h2>
+      <h2 style={{ fontFamily:"var(--heading)",fontSize:22,fontWeight:800,color:"var(--text)",marginBottom:16 }}>Settings</h2>
 
+      <div style={{ display:"flex",gap:4,marginBottom:20,background:"var(--subtle-bg)",borderRadius:12,padding:4,width:"fit-content" }}>
+        <div onClick={() => setSettingsTab("general")} style={tabStyle("general")}>General</div>
+        <div onClick={() => setSettingsTab("household")} style={tabStyle("household")}>Household</div>
+      </div>
+
+      {settingsTab === "general" && <>
       {/* Profile */}
       <Glass style={{ padding:24,marginBottom:20 }}>
         <div style={{ display:"flex",alignItems:"center",gap:12,marginBottom:20 }}>
@@ -132,92 +140,6 @@ export default function SettingsPage({
         </form>
       </Glass>
 
-      {/* Household */}
-      <Glass style={{ padding:24,marginBottom:20 }}>
-        <div style={{ display:"flex",alignItems:"center",gap:12,marginBottom:20 }}>
-          <div style={{ width:40,height:40,borderRadius:12,background:"var(--primary)",display:"flex",alignItems:"center",justifyContent:"center" }}>
-            <Home size={20} color="#fff" />
-          </div>
-          <div>
-            <div style={{ fontFamily:"var(--heading)",fontSize:15,fontWeight:700,color:"var(--text)" }}>Household</div>
-            <div style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)" }}>Share finances with family members</div>
-          </div>
-        </div>
-
-        {householdLoading ? (
-          <div style={{ fontFamily:"var(--body)",fontSize:13,color:"var(--muted)" }}>Loading...</div>
-        ) : incomingInvite ? (
-          <div>
-            <div style={{ fontFamily:"var(--body)",fontSize:13,color:"var(--text)",marginBottom:12 }}>
-              You've been invited to join <strong>{incomingInvite.households?.name || "a household"}</strong>
-            </div>
-            <div style={{ display:"flex",gap:8 }}>
-              <button onClick={acceptInvite} style={{
-                padding:"10px 20px",borderRadius:10,border:"none",
-                background:"#22C55E",color:"#fff",
-                fontFamily:"var(--body)",fontSize:13,fontWeight:600,cursor:"pointer",
-                display:"flex",alignItems:"center",gap:6,
-              }}><Check size={14} /> Accept</button>
-              <button onClick={declineInvite} style={{
-                padding:"10px 20px",borderRadius:10,border:"1px solid var(--border)",
-                background:"transparent",color:"var(--text)",
-                fontFamily:"var(--body)",fontSize:13,fontWeight:600,cursor:"pointer",
-              }}>Decline</button>
-            </div>
-          </div>
-        ) : !household ? (
-          <div>
-            <div style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",marginBottom:12 }}>
-              Create a household to share your bills, budgets, and transactions with your partner or family.
-            </div>
-            <div style={{ display:"flex",gap:8 }}>
-              <input value={householdName} onChange={e => setHouseholdName(e.target.value)} placeholder="Household name" style={inputStyle}
-                onKeyDown={e => { if (e.key === "Enter" && householdName.trim()) { createHousehold(householdName.trim()); setHouseholdName(""); }}} />
-              <button onClick={() => { if (householdName.trim()) { createHousehold(householdName.trim()); setHouseholdName(""); }}} style={{
-                padding:"10px 20px",borderRadius:10,border:"none",
-                background:themeName === "halo" ? "linear-gradient(135deg, #4ADE80, #FFB000)" : "linear-gradient(135deg, #6366F1, #8B5CF6, #A855F7)",color:"var(--btn-text)",
-                fontFamily:"var(--body)",fontSize:13,fontWeight:600,cursor:"pointer",whiteSpace:"nowrap",
-              }}>Create</button>
-            </div>
-          </div>
-        ) : (
-          <div>
-            <div style={{ fontFamily:"var(--body)",fontSize:13,fontWeight:600,color:"var(--text)",marginBottom:12 }}>{household.name}</div>
-
-            <div style={{ fontFamily:"var(--mono)",fontSize:10,color:"var(--muted)",textTransform:"uppercase",letterSpacing:1,marginBottom:8,fontWeight:600 }}>Members</div>
-            {householdMembers.map(m => (
-              <div key={m.userId} style={{ display:"flex",alignItems:"center",gap:8,padding:"6px 0" }}>
-                <div style={{ width:28,height:28,borderRadius:8,background:"var(--subtle-bg)",display:"flex",alignItems:"center",justifyContent:"center" }}>
-                  <User size={14} color="var(--muted)" />
-                </div>
-                <span style={{ fontFamily:"var(--body)",fontSize:13,color:"var(--text)",flex:1 }}>{m.name}{m.isMe ? " (you)" : ""}</span>
-                <span style={{ fontFamily:"var(--mono)",fontSize:10,color:"var(--muted)",background:"var(--subtle-bg)",padding:"2px 8px",borderRadius:4 }}>{m.role}</span>
-              </div>
-            ))}
-
-            {pendingInvites.length > 0 && (
-              <div style={{ marginTop:12 }}>
-                <div style={{ fontFamily:"var(--mono)",fontSize:10,color:"var(--muted)",textTransform:"uppercase",letterSpacing:1,marginBottom:6,fontWeight:600 }}>Pending Invites</div>
-                {pendingInvites.map(inv => (
-                  <div key={inv.id} style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",padding:"4px 0" }}>{inv.email}</div>
-                ))}
-              </div>
-            )}
-
-            <div style={{ marginTop:16,display:"flex",gap:8 }}>
-              <input value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} placeholder="Email to invite" type="email" style={inputStyle}
-                onKeyDown={e => { if (e.key === "Enter" && inviteEmail.trim()) { inviteMember(inviteEmail.trim()); setInviteEmail(""); }}} />
-              <button onClick={() => { if (inviteEmail.trim()) { inviteMember(inviteEmail.trim()); setInviteEmail(""); }}} style={{
-                padding:"10px 20px",borderRadius:10,border:"none",
-                background:themeName === "halo" ? "linear-gradient(135deg, #4ADE80, #FFB000)" : "linear-gradient(135deg, #6366F1, #8B5CF6, #A855F7)",color:"var(--btn-text)",
-                fontFamily:"var(--body)",fontSize:13,fontWeight:600,cursor:"pointer",
-                display:"flex",alignItems:"center",gap:6,whiteSpace:"nowrap",
-              }}><UserPlus size={14} /> Invite</button>
-            </div>
-          </div>
-        )}
-      </Glass>
-
       {/* Your Data */}
       <Glass style={{ padding:24,marginBottom:20 }}>
         <div style={{ display:"flex",alignItems:"center",gap:12,marginBottom:16 }}>
@@ -309,6 +231,126 @@ export default function SettingsPage({
           </div>
         </details>
       </Glass>
+      </>}
+
+      {settingsTab === "household" && <>
+        {householdLoading ? (
+          <Glass style={{ padding:24 }}>
+            <div style={{ fontFamily:"var(--body)",fontSize:13,color:"var(--muted)" }}>Loading...</div>
+          </Glass>
+        ) : incomingInvite ? (
+          <Glass style={{ padding:24 }}>
+            <div style={{ display:"flex",alignItems:"center",gap:12,marginBottom:20 }}>
+              <div style={{ width:40,height:40,borderRadius:12,background:"#22C55E",display:"flex",alignItems:"center",justifyContent:"center" }}>
+                <Mail size={20} color="#fff" />
+              </div>
+              <div>
+                <div style={{ fontFamily:"var(--heading)",fontSize:15,fontWeight:700,color:"var(--text)" }}>You're Invited!</div>
+                <div style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)" }}>Join <strong>{incomingInvite.households?.name || "a household"}</strong></div>
+              </div>
+            </div>
+            <div style={{ fontFamily:"var(--body)",fontSize:13,color:"var(--text)",marginBottom:16 }}>
+              Someone has invited you to share finances together. Accept to see their bills, budgets, and transactions.
+            </div>
+            <div style={{ display:"flex",gap:8 }}>
+              <button onClick={acceptInvite} style={{
+                padding:"10px 20px",borderRadius:10,border:"none",
+                background:"#22C55E",color:"#fff",
+                fontFamily:"var(--body)",fontSize:13,fontWeight:600,cursor:"pointer",
+                display:"flex",alignItems:"center",gap:6,
+              }}><Check size={14} /> Accept</button>
+              <button onClick={declineInvite} style={{
+                padding:"10px 20px",borderRadius:10,border:"1px solid var(--border)",
+                background:"transparent",color:"var(--text)",
+                fontFamily:"var(--body)",fontSize:13,fontWeight:600,cursor:"pointer",
+              }}>Decline</button>
+            </div>
+          </Glass>
+        ) : !household ? (
+          <Glass style={{ padding:24 }}>
+            <div style={{ display:"flex",alignItems:"center",gap:12,marginBottom:20 }}>
+              <div style={{ width:40,height:40,borderRadius:12,background:"var(--primary)",display:"flex",alignItems:"center",justifyContent:"center" }}>
+                <Home size={20} color="#fff" />
+              </div>
+              <div>
+                <div style={{ fontFamily:"var(--heading)",fontSize:15,fontWeight:700,color:"var(--text)" }}>Create a Household</div>
+                <div style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)" }}>Share finances with your partner or family</div>
+              </div>
+            </div>
+            <div style={{ fontFamily:"var(--body)",fontSize:13,color:"var(--muted)",marginBottom:16 }}>
+              Create a household to share your bills, budgets, and transactions. Both members can view and edit everything.
+            </div>
+            <div style={{ display:"flex",gap:8 }}>
+              <input value={householdName} onChange={e => setHouseholdName(e.target.value)} placeholder="e.g. Nordgren Family" style={inputStyle}
+                onKeyDown={e => { if (e.key === "Enter" && householdName.trim()) { createHousehold(householdName.trim()); setHouseholdName(""); }}} />
+              <button onClick={() => { if (householdName.trim()) { createHousehold(householdName.trim()); setHouseholdName(""); }}} style={{
+                padding:"10px 20px",borderRadius:10,border:"none",
+                background:themeName === "halo" ? "linear-gradient(135deg, #4ADE80, #FFB000)" : "linear-gradient(135deg, #6366F1, #8B5CF6, #A855F7)",color:"var(--btn-text)",
+                fontFamily:"var(--body)",fontSize:13,fontWeight:600,cursor:"pointer",whiteSpace:"nowrap",
+              }}>Create Household</button>
+            </div>
+          </Glass>
+        ) : (
+          <>
+            {/* Household Info */}
+            <Glass style={{ padding:24,marginBottom:20 }}>
+              <div style={{ display:"flex",alignItems:"center",gap:12,marginBottom:20 }}>
+                <div style={{ width:40,height:40,borderRadius:12,background:"var(--primary)",display:"flex",alignItems:"center",justifyContent:"center" }}>
+                  <Home size={20} color="#fff" />
+                </div>
+                <div>
+                  <div style={{ fontFamily:"var(--heading)",fontSize:18,fontWeight:800,color:"var(--text)" }}>{household.name}</div>
+                  <div style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)" }}>Your shared household</div>
+                </div>
+              </div>
+            </Glass>
+
+            {/* Members */}
+            <Glass style={{ padding:24,marginBottom:20 }}>
+              <div style={{ fontFamily:"var(--heading)",fontSize:15,fontWeight:700,color:"var(--text)",marginBottom:16 }}>Members</div>
+              {householdMembers.map(m => (
+                <div key={m.userId} style={{ display:"flex",alignItems:"center",gap:12,padding:"10px 0",borderBottom:"1px solid var(--border-light)" }}>
+                  <div style={{ width:36,height:36,borderRadius:10,background:"var(--subtle-bg)",display:"flex",alignItems:"center",justifyContent:"center" }}>
+                    <User size={16} color="var(--muted)" />
+                  </div>
+                  <div style={{ flex:1 }}>
+                    <div style={{ fontFamily:"var(--body)",fontSize:13,fontWeight:600,color:"var(--text)" }}>{m.name}{m.isMe ? " (you)" : ""}</div>
+                  </div>
+                  <span style={{ fontFamily:"var(--mono)",fontSize:10,color:"var(--muted)",background:"var(--subtle-bg)",padding:"3px 10px",borderRadius:6,fontWeight:600 }}>{m.role}</span>
+                </div>
+              ))}
+            </Glass>
+
+            {/* Invite */}
+            <Glass style={{ padding:24,marginBottom:20 }}>
+              <div style={{ fontFamily:"var(--heading)",fontSize:15,fontWeight:700,color:"var(--text)",marginBottom:8 }}>Invite Member</div>
+              <div style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",marginBottom:14 }}>They'll see the invite when they log in to Settings &gt; Household.</div>
+              <div style={{ display:"flex",gap:8 }}>
+                <input value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} placeholder="Email address" type="email" style={inputStyle}
+                  onKeyDown={e => { if (e.key === "Enter" && inviteEmail.trim()) { inviteMember(inviteEmail.trim()); setInviteEmail(""); }}} />
+                <button onClick={() => { if (inviteEmail.trim()) { inviteMember(inviteEmail.trim()); setInviteEmail(""); }}} style={{
+                  padding:"10px 20px",borderRadius:10,border:"none",
+                  background:themeName === "halo" ? "linear-gradient(135deg, #4ADE80, #FFB000)" : "linear-gradient(135deg, #6366F1, #8B5CF6, #A855F7)",color:"var(--btn-text)",
+                  fontFamily:"var(--body)",fontSize:13,fontWeight:600,cursor:"pointer",
+                  display:"flex",alignItems:"center",gap:6,whiteSpace:"nowrap",
+                }}><UserPlus size={14} /> Invite</button>
+              </div>
+
+              {pendingInvites.length > 0 && (
+                <div style={{ marginTop:16 }}>
+                  <div style={{ fontFamily:"var(--mono)",fontSize:10,color:"var(--muted)",textTransform:"uppercase",letterSpacing:1,marginBottom:8,fontWeight:600 }}>Pending</div>
+                  {pendingInvites.map(inv => (
+                    <div key={inv.id} style={{ display:"flex",alignItems:"center",gap:8,padding:"6px 0" }}>
+                      <Mail size={14} color="var(--muted)" />
+                      <span style={{ fontFamily:"var(--body)",fontSize:13,color:"var(--muted)" }}>{inv.email}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Glass>
+          </>
+        )}
+      </>}
     </div>
   );
 }

@@ -17,12 +17,17 @@ export function useHousehold(flash) {
     // Check if user is in a household
     const { data: memberRow } = await supabase
       .from("household_members")
-      .select("household_id, role, households(id, name)")
+      .select("household_id, role")
       .eq("user_id", userId)
       .maybeSingle();
 
-    if (memberRow?.households) {
-      setHousehold({ id: memberRow.households.id, name: memberRow.households.name, role: memberRow.role });
+    if (memberRow?.household_id) {
+      const { data: hData } = await supabase
+        .from("households")
+        .select("id, name")
+        .eq("id", memberRow.household_id)
+        .maybeSingle();
+      setHousehold({ id: memberRow.household_id, name: hData?.name || "Household", role: memberRow.role });
 
       // Load members
       const { data: allMembers } = await supabase
