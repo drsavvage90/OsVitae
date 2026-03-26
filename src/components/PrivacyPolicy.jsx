@@ -8,13 +8,13 @@ export default function PrivacyPolicy() {
       <p style={p}>Last updated: March 22, 2026</p>
 
       <h3 style={h}>What We Collect</h3>
-      <p style={p}>OSVitae stores only data you explicitly enter: tasks, habits, calendar events, journal entries, financial records, and optional profile information. Authentication is handled by Apple via OAuth &mdash; we never see or store your Apple password.</p>
+      <p style={p}>OSVitae stores only data you explicitly enter: tasks, habits, calendar events, journal entries, financial records, and optional profile information. Authentication is handled via email and password through Supabase Auth. Your password is securely hashed and never stored in plain text.</p>
 
       <h3 style={h}>How Your Data Is Stored</h3>
       <p style={p}>All data is stored in a Supabase-hosted PostgreSQL database with Row-Level Security (RLS) ensuring that only you can access your own data. Personal information (name, email, phone, address, date of birth) is encrypted at rest using AES-256-GCM before being stored in the database.</p>
 
       <h3 style={h}>Third-Party Services (Sub-Processors)</h3>
-      <p style={p}><strong>Supabase</strong> &mdash; database hosting, authentication, and serverless functions (Supabase maintains a GDPR-compliant Data Processing Agreement). <strong>Apple</strong> &mdash; OAuth sign-in and optional CalDAV calendar sync (only if you choose to connect). <strong>Vercel</strong> &mdash; frontend hosting (Vercel maintains a GDPR-compliant Data Processing Addendum). <strong>Google Fonts</strong> &mdash; font delivery. No analytics, advertising, or tracking services are used.</p>
+      <p style={p}><strong>Supabase</strong> &mdash; database hosting, authentication, and serverless functions (Supabase maintains a GDPR-compliant Data Processing Agreement). <strong>Apple</strong> &mdash; optional CalDAV calendar sync (only if you choose to connect). <strong>Vercel</strong> &mdash; frontend hosting (Vercel maintains a GDPR-compliant Data Processing Addendum). <strong>Google Fonts</strong> &mdash; font delivery. No analytics, advertising, or tracking services are used.</p>
 
       <h3 style={h}>Local Storage</h3>
       <p style={p}>OSVitae uses browser localStorage strictly for functionality: your authentication session token and theme preference. No cookies are used for tracking.</p>

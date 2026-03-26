@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { logger } from '../lib/logger'
 import PrivacyPolicy from './PrivacyPolicy'
 
 export default function LoginPage() {
@@ -12,16 +11,6 @@ export default function LoginPage() {
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(false)
-
-  const signInWithApple = async () => {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'apple',
-      options: {
-        redirectTo: window.location.origin,
-      },
-    })
-    if (error) logger.error('Sign in error:', error.message)
-  }
 
   const handleEmailAuth = async (e) => {
     e.preventDefault()
@@ -192,42 +181,6 @@ export default function LoginPage() {
             {mode === 'sign_in' ? 'Sign Up' : 'Sign In'}
           </button>
         </p>
-
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 12, margin: '0 0 20px',
-        }}>
-          <div style={{ flex: 1, height: 1, background: '#E5E7EB' }} />
-          <span style={{ fontSize: 12, color: '#9CA3AF' }}>or</span>
-          <div style={{ flex: 1, height: 1, background: '#E5E7EB' }} />
-        </div>
-
-        <button
-          onClick={signInWithApple}
-          style={{
-            width: '100%',
-            padding: '14px 20px',
-            borderRadius: 12,
-            border: 'none',
-            background: '#000',
-            color: '#fff',
-            fontSize: 16,
-            fontWeight: 600,
-            fontFamily: "'Inter', -apple-system, sans-serif",
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 10,
-            transition: 'opacity 0.2s',
-          }}
-          onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
-          onMouseLeave={e => e.currentTarget.style.opacity = '1'}
-        >
-          <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-            <path d="M13.21 9.48c-.02-1.89 1.55-2.8 1.62-2.84-.88-1.29-2.25-1.47-2.74-1.49-1.16-.12-2.28.69-2.87.69-.6 0-1.51-.67-2.49-.65-1.27.02-2.46.75-3.11 1.9-1.34 2.32-.34 5.74.95 7.62.64.92 1.4 1.95 2.39 1.91.97-.04 1.33-.62 2.49-.62 1.16 0 1.49.62 2.49.6 1.03-.02 1.69-.93 2.32-1.85.74-1.06 1.04-2.1 1.05-2.15-.02-.01-2.01-.77-2.1-3.12zM11.3 3.88c.52-.64.87-1.52.78-2.4-.75.03-1.68.51-2.22 1.14-.48.56-.91 1.47-.8 2.33.84.07 1.71-.43 2.24-1.07z" fill="white"/>
-          </svg>
-          Sign in with Apple
-        </button>
 
         <p style={{
           fontSize: 11, color: '#9CA3AF', marginTop: 24,
