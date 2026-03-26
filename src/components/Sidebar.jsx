@@ -2,7 +2,7 @@ import { useState } from "react";
 import {
   Home, Inbox, Calendar, ClipboardList, Timer, Repeat,
   Wallet, Library, RefreshCw, Trophy, Settings, Sun, Moon,
-  ArrowLeft, Plus, ChevronDown, ChevronRight, Zap,
+  ArrowLeft, Plus, ChevronDown, ChevronRight, Zap, LogOut,
 } from "lucide-react";
 import { getWsIcon } from "../lib/constants";
 import { Ring } from "./ui";
@@ -17,7 +17,7 @@ export default function Sidebar({
   sidebarSections, setSidebarSections,
   setShowNewWs, setShowNewProject, setNewProjectWsId,
   setShowMobileSidebar, setTimerTaskId,
-  doneTasks, totalTasks,
+  doneTasks, totalTasks, signOut,
 }) {
   const [expandedWs, setExpandedWs] = useState({});
   const toggleWsExpand = (id) => setExpandedWs(prev => ({ ...prev, [id]: !prev[id] }));
@@ -238,6 +238,16 @@ export default function Sidebar({
         >
           <span style={{ fontSize: 13, transition: "transform 0.3s", transform: collapsed ? "rotate(180deg)" : "none" }}><ArrowLeft size={14} /></span>
           {!collapsed && "Collapse"}
+        </div>
+        <div onClick={signOut} style={{
+          display: "flex", alignItems: "center", justifyContent: collapsed ? "center" : "flex-start",
+          gap: 10, padding: "8px 14px", borderRadius: 10, cursor: "pointer", color: "var(--muted)", fontFamily: "var(--body)", fontSize: 12,
+        }}
+          onMouseEnter={e => e.currentTarget.style.background = "var(--hover-bg)"}
+          onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+        >
+          <span style={{ fontSize: 13 }}><LogOut size={14} /></span>
+          {!collapsed && "Sign Out"}
         </div>
       </div>
     </div>

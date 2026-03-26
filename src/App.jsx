@@ -841,6 +841,13 @@ export default function App() {
     }
   };
 
+  const handleSignOut = async () => {
+    if (navigator.serviceWorker?.controller) {
+      navigator.serviceWorker.controller.postMessage({ type: "CLEAR_CACHE" });
+    }
+    await supabase.auth.signOut();
+  };
+
   const loadFromSupabase = async () => {
     const userId = await getUserId();
     if (!userId) return;
@@ -1261,13 +1268,13 @@ export default function App() {
         <div className="mobile-sidebar-overlay" style={{ position:"fixed",inset:0,zIndex:50 }}>
           <div onClick={() => setShowMobileSidebar(false)} style={{ position:"absolute",inset:0,background:"var(--overlay-heavy)",backdropFilter:"blur(2px)" }} />
           <div className="mobile-sidebar-panel" style={{ position:"relative",width:"min(280px, calc(100vw - 60px))",height:"100%",zIndex:51,paddingTop:"env(safe-area-inset-top)",paddingBottom:"env(safe-area-inset-bottom)" }}>
-            <Sidebar collapsed={collapsed} setCollapsed={setCollapsed} page={page} setPage={setPage} themeName={themeName} toggleTheme={toggleTheme} timerActive={timerActive} timeLeft={timeLeft} fmt={fmt} inbox={inbox} ws={ws} tasks={tasks} projects={projects} activeWsId={activeWsId} activeProjectId={activeProjectId} goWs={goWs} goProject={goProject} goToday={goToday} sidebarSections={sidebarSections} setSidebarSections={setSidebarSections} setShowNewWs={setShowNewWs} setShowNewProject={setShowNewProject} setNewProjectWsId={setNewProjectWsId} setShowMobileSidebar={setShowMobileSidebar} setTimerTaskId={setTimerTaskId} doneTasks={doneTasks} totalTasks={totalTasks} />
+            <Sidebar collapsed={collapsed} setCollapsed={setCollapsed} page={page} setPage={setPage} themeName={themeName} toggleTheme={toggleTheme} timerActive={timerActive} timeLeft={timeLeft} fmt={fmt} inbox={inbox} ws={ws} tasks={tasks} projects={projects} activeWsId={activeWsId} activeProjectId={activeProjectId} goWs={goWs} goProject={goProject} goToday={goToday} sidebarSections={sidebarSections} setSidebarSections={setSidebarSections} setShowNewWs={setShowNewWs} setShowNewProject={setShowNewProject} setNewProjectWsId={setNewProjectWsId} setShowMobileSidebar={setShowMobileSidebar} setTimerTaskId={setTimerTaskId} doneTasks={doneTasks} totalTasks={totalTasks} signOut={handleSignOut} />
           </div>
         </div>
       )}
 
       <div className="sidebar-desktop">
-        <Sidebar collapsed={collapsed} setCollapsed={setCollapsed} page={page} setPage={setPage} themeName={themeName} toggleTheme={toggleTheme} timerActive={timerActive} timeLeft={timeLeft} fmt={fmt} inbox={inbox} ws={ws} tasks={tasks} projects={projects} activeWsId={activeWsId} activeProjectId={activeProjectId} goWs={goWs} goProject={goProject} goToday={goToday} sidebarSections={sidebarSections} setSidebarSections={setSidebarSections} setShowNewWs={setShowNewWs} setShowNewProject={setShowNewProject} setNewProjectWsId={setNewProjectWsId} setShowMobileSidebar={setShowMobileSidebar} setTimerTaskId={setTimerTaskId} doneTasks={doneTasks} totalTasks={totalTasks} />
+        <Sidebar collapsed={collapsed} setCollapsed={setCollapsed} page={page} setPage={setPage} themeName={themeName} toggleTheme={toggleTheme} timerActive={timerActive} timeLeft={timeLeft} fmt={fmt} inbox={inbox} ws={ws} tasks={tasks} projects={projects} activeWsId={activeWsId} activeProjectId={activeProjectId} goWs={goWs} goProject={goProject} goToday={goToday} sidebarSections={sidebarSections} setSidebarSections={setSidebarSections} setShowNewWs={setShowNewWs} setShowNewProject={setShowNewProject} setNewProjectWsId={setNewProjectWsId} setShowMobileSidebar={setShowMobileSidebar} setTimerTaskId={setTimerTaskId} doneTasks={doneTasks} totalTasks={totalTasks} signOut={handleSignOut} />
       </div>
 
       <div style={{ flex:1,display:"flex",flexDirection:"column",overflow:"hidden" }}>
