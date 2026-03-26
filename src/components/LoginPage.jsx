@@ -169,7 +169,7 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <p style={{ fontSize: 13, color: '#6B7280', margin: '0 0 20px' }}>
+        <p style={{ fontSize: 13, color: '#6B7280', margin: '0 0 12px' }}>
           {mode === 'sign_in' ? "Don't have an account? " : 'Already have an account? '}
           <button
             onClick={() => { setMode(mode === 'sign_in' ? 'sign_up' : 'sign_in'); setError(''); setMessage('') }}
@@ -181,6 +181,27 @@ export default function LoginPage() {
             {mode === 'sign_in' ? 'Sign Up' : 'Sign In'}
           </button>
         </p>
+
+        {mode === 'sign_in' && (
+          <p style={{ fontSize: 13, color: '#6B7280', margin: '0 0 20px' }}>
+            <button
+              onClick={async () => {
+                setError(''); setMessage('');
+                if (!email) { setError('Enter your email above first'); return; }
+                setLoading(true);
+                const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin });
+                if (error) { setError(error.message); } else { setMessage('Password reset link sent! Check your inbox.'); }
+                setLoading(false);
+              }}
+              style={{
+                background: 'none', border: 'none', color: '#6366f1',
+                cursor: 'pointer', fontSize: 13, fontWeight: 600, padding: 0,
+              }}
+            >
+              Forgot password?
+            </button>
+          </p>
+        )}
 
         <p style={{
           fontSize: 11, color: '#9CA3AF', marginTop: 24,

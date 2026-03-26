@@ -1060,7 +1060,11 @@ export default function App() {
       // Always load DB data on any session event
       loadFromSupabase();
       // Only call edge functions after token is confirmed fresh
-      if (event === 'TOKEN_REFRESHED' || event === 'SIGNED_IN') {
+      if (event === 'PASSWORD_RECOVERY') {
+        setPage('settings');
+        flash('Set your new password below.');
+        loadEdgeFunctions();
+      } else if (event === 'TOKEN_REFRESHED' || event === 'SIGNED_IN') {
         loadEdgeFunctions();
       } else if (event === 'INITIAL_SESSION') {
         // Token might be expired — refresh first, then load
