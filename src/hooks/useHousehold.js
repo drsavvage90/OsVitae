@@ -77,15 +77,14 @@ export function useHousehold(flash) {
   const createHousehold = async (name) => {
     const userId = await getUserId();
     if (!userId) return;
-    const { data: h, error: hErr } = await supabase
+    const householdId = crypto.randomUUID();
+    const { error: hErr } = await supabase
       .from("households")
-      .insert({ name })
-      .select()
-      .single();
+      .insert({ id: householdId, name });
     if (hErr) { logger.error("Failed to create household:", hErr); flash("Failed to create household."); return; }
     const { error: mErr } = await supabase
       .from("household_members")
-      .insert({ household_id: h.id, user_id: userId, role: "owner" });
+      .insert({ household_id: householdId, user_id: userId, role: "owner" });
     if (mErr) { logger.error("Failed to join household:", mErr); flash("Failed to create household."); return; }
     flash("Household created!");
     await loadHousehold();
