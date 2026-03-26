@@ -73,8 +73,12 @@ export default function SettingsPage({
           setLinkError(""); setLinkMessage(""); setLinkLoading(true);
           if (linkPassword.length < 6) { setLinkError("Password must be at least 6 characters"); setLinkLoading(false); return; }
           if (linkPassword !== linkConfirm) { setLinkError("Passwords do not match"); setLinkLoading(false); return; }
-          const { error } = await supabase.auth.updateUser({ email: linkEmail, password: linkPassword }, { emailRedirectTo: window.location.origin });
-          if (error) { setLinkError(error.message); } else { setLinkMessage("Email linked! Check your inbox to confirm the email address."); setLinkEmail(""); setLinkPassword(""); setLinkConfirm(""); }
+          // Update password first (doesn't require email validation)
+          const { error: pwError } = await supabase.auth.updateUser({ password: linkPassword });
+          if (pwError) { setLinkError(pwError.message); setLinkLoading(false); return; }
+          // Then update email separately (triggers confirmation email)
+          const { error: emailError } = await supabase.auth.updateUser({ email: linkEmail }, { emailRedirectTo: window.location.origin });
+          if (emailError) { setLinkError(emailError.message); } else { setLinkMessage("Password set! Check your inbox to confirm the new email address."); setLinkEmail(""); setLinkPassword(""); setLinkConfirm(""); }
           setLinkLoading(false);
         }} style={{ display:"flex",flexDirection:"column",gap:12 }}>
           <input type="email" placeholder="Email" value={linkEmail} onChange={e => setLinkEmail(e.target.value)} required style={inputStyle} />
