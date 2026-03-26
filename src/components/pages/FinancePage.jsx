@@ -21,14 +21,18 @@ export default function FinancePage({
 
   const cats = getCategories();
   const allCats = [...cats.income, ...cats.expense];
+  // Bills auto-count as monthly expenses
+  const totalBillsExpense = bills.reduce((s, b) => s + b.amount, 0);
+  const txExpenses = transactions.filter(t => t.type === "expense").reduce((s, t) => s + t.amount, 0);
+  const totalExpenses = txExpenses + totalBillsExpense;
   const totalIncome = transactions.filter(t => t.type === "income").reduce((s, t) => s + t.amount, 0);
-  const totalExpenses = transactions.filter(t => t.type === "expense").reduce((s, t) => s + t.amount, 0);
   const netBalance = totalIncome - totalExpenses;
-  const recurringExpenses = transactions.filter(t => t.type === "expense" && t.recurring).reduce((s, t) => s + t.amount, 0);
+  const recurringExpenses = totalBillsExpense + transactions.filter(t => t.type === "expense" && t.recurring).reduce((s, t) => s + t.amount, 0);
   const getCat = (id) => allCats.find(c => c.id === id) || { label: id, color: "#94A3B8" };
   const spendingByCategory = cats.expense.map(cat => {
-    const spent = transactions.filter(t => t.type === "expense" && t.category === cat.id).reduce((s, t) => s + t.amount, 0);
-    return { ...cat, spent };
+    const txSpent = transactions.filter(t => t.type === "expense" && t.category === cat.id).reduce((s, t) => s + t.amount, 0);
+    const billSpent = bills.filter(b => b.category === cat.id).reduce((s, b) => s + b.amount, 0);
+    return { ...cat, spent: txSpent + billSpent };
   }).filter(c => c.spent > 0).sort((a, b) => b.spent - a.spent);
   const sortedTransactions = [...transactions].sort((a, b) => new Date(b.date) - new Date(a.date));
   const fTabStyle = (t) => ({ padding:"8px 20px",borderRadius:10,cursor:"pointer",fontFamily:"var(--body)",fontSize:13,fontWeight:600,background:financeTab===t?"var(--text)":"transparent",color:financeTab===t?"var(--text-on-primary)":"var(--muted)",transition:"all 0.2s" });
@@ -370,7 +374,9 @@ export default function FinancePage({
           </div>
           {cats.expense.map((cat,i) => {
             const budget = budgets.find(b=>b.categoryId===cat.id); const limit = budget?budget.limit:0;
-            const spent = transactions.filter(t=>t.type==="expense"&&t.category===cat.id).reduce((s,t)=>s+t.amount,0);
+            const txSpent = transactions.filter(t=>t.type==="expense"&&t.category===cat.id).reduce((s,t)=>s+t.amount,0);
+            const billSpent = bills.filter(b=>b.category===cat.id).reduce((s,b)=>s+b.amount,0);
+            const spent = txSpent + billSpent;
             const pct = limit>0?Math.min((spent/limit)*100,100):0; const over = spent>limit&&limit>0;
             return (
               <Glass key={cat.id} style={{ padding:16,marginBottom:8,animation:`slideUp 0.3s ${i*0.04}s both ease-out` }}>
