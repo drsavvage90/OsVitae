@@ -1,4 +1,4 @@
-import { FileCode2, Image as ImageIcon, FileText, FileEdit, Trash2, Plus } from "lucide-react";
+import { FileCode2, Image as ImageIcon, FileText, FileEdit, Trash2, Plus, Pencil } from "lucide-react";
 import { Glass, Btn } from "../ui";
 import { getWsIcon } from "../../lib/constants";
 
@@ -7,7 +7,7 @@ export default function WorkspacePage({
   wsTab, setWsTab,
   setNewTaskWs, setNewTaskProject, setShowNewTask,
   setShowWsNote, setShowWsDoc,
-  deleteWorkspace, deleteWsNote, deleteWsDoc,
+  deleteWorkspace, deleteWsNote, deleteWsDoc, openEditWs,
   goTask, goProject,
   setShowNewProject, setNewProjectWsId, deleteProject,
   TaskRow,
@@ -36,6 +36,10 @@ export default function WorkspacePage({
         </div>
         <div style={{ display:"flex",alignItems:"center",gap:8 }}>
           <Btn primary color={activeWs.color} onClick={() => { setNewProjectWsId(activeWsId); setShowNewProject(true); }}>+ New Project</Btn>
+          <div role="button" onClick={() => openEditWs(activeWs)} style={{ width:32,height:32,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",color:"var(--muted)",transition:"all 0.15s" }}
+            onMouseEnter={e => { e.currentTarget.style.color="var(--primary)"; e.currentTarget.style.background="var(--subtle-bg)"; }}
+            onMouseLeave={e => { e.currentTarget.style.color="var(--muted)"; e.currentTarget.style.background="transparent"; }}
+          ><Pencil size={16}/></div>
           <div role="button" onClick={() => { if (confirm(`Delete workspace "${activeWs.name}"?`)) deleteWorkspace(activeWsId); }} style={{ width:32,height:32,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",color:"var(--muted)",transition:"all 0.15s" }}
             onMouseEnter={e => { e.currentTarget.style.color="#EF4444"; e.currentTarget.style.background="rgba(239,68,68,0.08)"; }}
             onMouseLeave={e => { e.currentTarget.style.color="var(--muted)"; e.currentTarget.style.background="transparent"; }}

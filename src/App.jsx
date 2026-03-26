@@ -124,6 +124,10 @@ export default function App() {
   const [newWsName, setNewWsName] = useState("");
   const [newWsColor, setNewWsColor] = useState(WS_COLOR_OPTIONS[0]);
   const [newWsIcon, setNewWsIcon] = useState("Folder");
+  const [editingWsId, setEditingWsId] = useState(null);
+  const [editWsName, setEditWsName] = useState("");
+  const [editWsColor, setEditWsColor] = useState("");
+  const [editWsIcon, setEditWsIcon] = useState("");
   const [projects, setProjects] = useState([]);
   const [showNewProject, setShowNewProject] = useState(false);
   const [newProjectName, setNewProjectName] = useState("");
@@ -482,6 +486,20 @@ export default function App() {
       setWorkspaces(prev => prev.filter(w => w.id !== id));
       flash("Failed to save workspace.");
     }
+  };
+
+  const openEditWs = (ws) => {
+    setEditingWsId(ws.id); setEditWsName(ws.name); setEditWsColor(ws.color); setEditWsIcon(ws.icon);
+  };
+
+  const updateWorkspace = async () => {
+    if (!editWsName.trim()) return;
+    const id = editingWsId;
+    setWorkspaces(prev => prev.map(w => w.id === id ? { ...w, name: editWsName.trim(), color: editWsColor, icon: editWsIcon } : w));
+    setEditingWsId(null);
+    flash("Workspace updated!");
+    const { error } = await supabase.from("workspaces").update({ name: editWsName.trim(), color: editWsColor, icon: editWsIcon }).eq("id", id);
+    if (error) logger.error("Failed to update workspace:", error);
   };
 
   const createProject = async () => {
@@ -1325,7 +1343,7 @@ export default function App() {
 
         <div className="main-content" style={{ flex:1,overflow:"auto",padding: page === "timer" ? "28px 28px" : "24px 28px", minHeight: 0, display:"flex", flexDirection:"column" }}>
           {page === "today" && <TodayPage greeting={greeting} totalTasks={totalTasks} doneTasks={doneTasks} totalPomos={totalPomos} donePomos={donePomos} habits={habits} toggleHabit={toggleHabit} streak={streak} themeName={themeName} timerActive={timerActive} timeLeft={timeLeft} fmt={fmt} setTimerTaskId={setTimerTaskId} setPage={setPage} tasks={tasks} ws={ws} projects={projects} goTask={goTask} TaskRow={TaskRow} inbox={inbox} intentionText={intentionText} setIntentionText={setIntentionText} editingIntention={editingIntention} setEditingIntention={setEditingIntention} setNewTaskWs={setNewTaskWs} setShowNewTask={setShowNewTask} flash={flash} inputStyle={inputStyle} timeBlocks={timeBlocks} updateTimeBlock={updateTimeBlock} setShowNewBlock={setShowNewBlock} deleteTimeBlock={deleteTimeBlock} setEditingBlock={setEditingBlock} rewardText={rewardText} setRewardText={setRewardText} editingReward={editingReward} setEditingReward={setEditingReward} createTimeBlockFromTask={createTimeBlockFromTask} xp={xp} level={level} />}
-          {page === "workspace" && <WorkspacePage activeWs={activeWs} activeWsId={activeWsId} tasks={tasks} projects={projects} wsNotes={wsNotes} wsDocs={wsDocs} wsTab={wsTab} setWsTab={setWsTab} setNewTaskWs={setNewTaskWs} setNewTaskProject={setNewTaskProject} setShowNewTask={setShowNewTask} setShowWsNote={setShowWsNote} setShowWsDoc={setShowWsDoc} deleteWorkspace={deleteWorkspace} deleteWsNote={deleteWsNote} deleteWsDoc={deleteWsDoc} goTask={goTask} goProject={goProject} setShowNewProject={setShowNewProject} setNewProjectWsId={setNewProjectWsId} deleteProject={deleteProject} TaskRow={TaskRow} />}
+          {page === "workspace" && <WorkspacePage activeWs={activeWs} activeWsId={activeWsId} tasks={tasks} projects={projects} wsNotes={wsNotes} wsDocs={wsDocs} wsTab={wsTab} setWsTab={setWsTab} setNewTaskWs={setNewTaskWs} setNewTaskProject={setNewTaskProject} setShowNewTask={setShowNewTask} setShowWsNote={setShowWsNote} setShowWsDoc={setShowWsDoc} deleteWorkspace={deleteWorkspace} deleteWsNote={deleteWsNote} deleteWsDoc={deleteWsDoc} openEditWs={openEditWs} goTask={goTask} goProject={goProject} setShowNewProject={setShowNewProject} setNewProjectWsId={setNewProjectWsId} deleteProject={deleteProject} TaskRow={TaskRow} />}
           {page === "project" && <ProjectPage activeProject={activeProject} activeProjectId={activeProjectId} activeWs={activeWs} tasks={tasks} wsNotes={wsNotes} wsDocs={wsDocs} setNewTaskWs={setNewTaskWs} setNewTaskProject={setNewTaskProject} setShowNewTask={setShowNewTask} setShowWsNote={setShowWsNote} setShowWsDoc={setShowWsDoc} deleteProject={deleteProject} deleteWsNote={deleteWsNote} deleteWsDoc={deleteWsDoc} goTask={goTask} goWs={goWs} TaskRow={TaskRow} />}
           {page === "task" && <TaskDetailPage activeTask={activeTask} ws={ws} pColors={pColors} setPage={setPage} page={page} startFocus={startFocus} toggleTask={toggleTask} toggleSubtask={toggleSubtask} setEditingTask={setEditingTask} deleteTask={deleteTask} setShowNewNote={setShowNewNote} deleteTaskNote={deleteTaskNote} flash={flash} />}
           {page === "timer" && <TimerPage timerTask={timerTask} ws={ws} timeLeft={timeLeft} setTimeLeft={setTimeLeft} timerActive={timerActive} setTimerActive={setTimerActive} isBreak={isBreak} setIsBreak={setIsBreak} sessionCount={sessionCount} endTimeRef={endTimeRef} WORK_DURATION={WORK_DURATION} SHORT_BREAK={SHORT_BREAK} LONG_BREAK={LONG_BREAK} CYCLE_LENGTH={CYCLE_LENGTH} fmt={fmt} goToday={goToday} flash={flash} streak={streak} themeName={themeName} />}
@@ -1677,6 +1695,54 @@ export default function App() {
           <div style={{ display:"flex",gap:10 }}>
             <Btn onClick={() => setShowNewWs(false)}>Cancel</Btn>
             <Btn primary onClick={createWorkspace}>Create Workspace</Btn>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal open={!!editingWsId} onClose={() => setEditingWsId(null)} title="Edit Workspace">
+        <div style={{ marginBottom:16 }}>
+          <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>Name</label>
+          <input value={editWsName} onChange={e => setEditWsName(e.target.value)} style={inputStyle} autoFocus />
+        </div>
+        <div style={{ marginBottom:16 }}>
+          <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:8 }}>Color</label>
+          <div style={{ display:"flex",gap:8,flexWrap:"wrap" }}>
+            {WS_COLOR_OPTIONS.map(c => (
+              <div key={c} onClick={() => setEditWsColor(c)} style={{
+                width:28,height:28,borderRadius:8,background:c,cursor:"pointer",
+                border: editWsColor === c ? "2.5px solid var(--text)" : "2.5px solid transparent",
+                display:"flex",alignItems:"center",justifyContent:"center",
+                transition:"all 0.15s",transform: editWsColor === c ? "scale(1.15)" : "scale(1)",
+              }}>{editWsColor === c && <Check size={14} color="#fff" />}</div>
+            ))}
+          </div>
+        </div>
+        <div style={{ marginBottom:20 }}>
+          <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:8 }}>Icon</label>
+          <div style={{ display:"flex",gap:6,flexWrap:"wrap" }}>
+            {WS_ICON_OPTIONS.map(opt => {
+              const IconComp = opt.component;
+              return (
+                <div key={opt.key} onClick={() => setEditWsIcon(opt.key)} style={{
+                  width:36,height:36,borderRadius:8,cursor:"pointer",
+                  background: editWsIcon === opt.key ? `${editWsColor}18` : "var(--hover-bg)",
+                  border: editWsIcon === opt.key ? `2px solid ${editWsColor}` : "2px solid transparent",
+                  display:"flex",alignItems:"center",justifyContent:"center",
+                  color: editWsIcon === opt.key ? editWsColor : "var(--muted)",
+                  transition:"all 0.15s",
+                }}><IconComp size={18} /></div>
+              );
+            })}
+          </div>
+        </div>
+        <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center" }}>
+          <div style={{ display:"flex",alignItems:"center",gap:10 }}>
+            <div style={{ width:36,height:36,borderRadius:10,background:`${editWsColor}18`,display:"flex",alignItems:"center",justifyContent:"center",color:editWsColor }}>{getWsIcon(editWsIcon, 18)}</div>
+            <span style={{ fontFamily:"var(--body)",fontSize:13,fontWeight:600,color:"var(--text)" }}>{editWsName || "Preview"}</span>
+          </div>
+          <div style={{ display:"flex",gap:10 }}>
+            <Btn onClick={() => setEditingWsId(null)}>Cancel</Btn>
+            <Btn primary onClick={updateWorkspace}>Save</Btn>
           </div>
         </div>
       </Modal>
