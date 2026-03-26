@@ -73,7 +73,7 @@ export default function SettingsPage({
           setLinkError(""); setLinkMessage(""); setLinkLoading(true);
           if (linkPassword.length < 6) { setLinkError("Password must be at least 6 characters"); setLinkLoading(false); return; }
           if (linkPassword !== linkConfirm) { setLinkError("Passwords do not match"); setLinkLoading(false); return; }
-          const { error } = await supabase.auth.updateUser({ email: linkEmail, password: linkPassword });
+          const { error } = await supabase.auth.updateUser({ email: linkEmail, password: linkPassword }, { emailRedirectTo: window.location.origin });
           if (error) { setLinkError(error.message); } else { setLinkMessage("Email linked! Check your inbox to confirm the email address."); setLinkEmail(""); setLinkPassword(""); setLinkConfirm(""); }
           setLinkLoading(false);
         }} style={{ display:"flex",flexDirection:"column",gap:12 }}>
