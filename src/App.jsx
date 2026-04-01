@@ -712,8 +712,8 @@ export default function App() {
   const totalPomos = todayOnly.reduce((s, t) => s + t.totalPomos, 0);
   const pColors = { high: "#EF4444", medium: "#F59E0B", low: "#22C55E" };
   const hour = new Date().getHours();
-  const firstName = profileData.preferred_name ? profileData.preferred_name.split(" ")[0] : "";
-  const greeting = (hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening") + (firstName ? `, ${firstName}` : "");
+  const displayName = profileData.preferred_name || "";
+  const greeting = (hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening") + (displayName ? `, ${displayName}` : "");
   const activeWiki = wiki.find(a => a.id === activeWikiId);
 
   const filteredTasks = searchQuery
@@ -1221,7 +1221,7 @@ export default function App() {
           .topbar-breadcrumb{display:none}
           .topbar-search{width:auto;flex:1}
           .topbar-xp{display:none}
-          .stats-grid{grid-template-columns:1fr 1fr!important}
+          .stats-grid{grid-template-columns:1fr!important}
           .today-layout{flex-direction:column!important}
           .today-sidebar{width:100%!important}
           .notes-grid{grid-template-columns:1fr!important}
@@ -1242,7 +1242,7 @@ export default function App() {
           .topbar-breadcrumb{display:none}
           .topbar-search{width:auto;flex:1}
           .topbar-xp{display:none}
-          .stats-grid{grid-template-columns:1fr 1fr!important}
+          .stats-grid{grid-template-columns:1fr!important}
           .today-layout{flex-direction:column!important}
           .today-sidebar{width:100%!important}
           .notes-grid{grid-template-columns:1fr!important}
