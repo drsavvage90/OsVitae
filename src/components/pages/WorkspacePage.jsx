@@ -1,17 +1,19 @@
+import { useState } from "react";
 import { FileCode2, Image as ImageIcon, FileText, FileEdit, Trash2, Plus, Pencil } from "lucide-react";
-import { Glass, Btn } from "../ui";
+import { Glass, Btn, ConfirmModal } from "../ui";
 import { getWsIcon } from "../../lib/constants";
+import { monoLabel, sectionHeader } from "../../lib/styles";
 
 export default function WorkspacePage({
   activeWs, activeWsId, tasks, projects, wsNotes, wsDocs,
   wsTab, setWsTab,
-  setNewTaskWs, setNewTaskProject, setShowNewTask,
   setShowWsNote, setShowWsDoc,
   deleteWorkspace, deleteWsNote, deleteWsDoc, openEditWs,
   goTask, goProject,
   setShowNewProject, setNewProjectWsId, deleteProject,
   TaskRow,
 }) {
+  const [confirmDelete, setConfirmDelete] = useState(null);
   if (!activeWs) return <div style={{ padding:40,textAlign:"center",fontFamily:"var(--body)",color:"var(--muted)" }}>Select a workspace from the sidebar.</div>;
   const wsProjects = projects.filter(p => p.wsId === activeWsId);
   const wsTasks = tasks.filter(t => t.wsId === activeWsId);
@@ -40,7 +42,7 @@ export default function WorkspacePage({
             onMouseEnter={e => { e.currentTarget.style.color="var(--primary)"; e.currentTarget.style.background="var(--subtle-bg)"; }}
             onMouseLeave={e => { e.currentTarget.style.color="var(--muted)"; e.currentTarget.style.background="transparent"; }}
           ><Pencil size={16}/></div>
-          <div role="button" onClick={() => { if (confirm(`Delete workspace "${activeWs.name}"?`)) deleteWorkspace(activeWsId); }} style={{ width:32,height:32,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",color:"var(--muted)",transition:"all 0.15s" }}
+          <div role="button" onClick={() => setConfirmDelete({ id: activeWsId, title: activeWs.name, type: "workspace" })} style={{ width:32,height:32,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",color:"var(--muted)",transition:"all 0.15s" }}
             onMouseEnter={e => { e.currentTarget.style.color="#EF4444"; e.currentTarget.style.background="rgba(239,68,68,0.08)"; }}
             onMouseLeave={e => { e.currentTarget.style.color="var(--muted)"; e.currentTarget.style.background="transparent"; }}
           ><Trash2 size={16}/></div>
@@ -77,10 +79,10 @@ export default function WorkspacePage({
                   <div style={{ display:"flex",alignItems:"center",gap:12,marginBottom:12 }}>
                     <div style={{ width:38,height:38,borderRadius:11,background:`linear-gradient(135deg, ${p.color}, ${p.color}88)`,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",flexShrink:0 }}>{getWsIcon(p.icon, 18)}</div>
                     <div style={{ flex:1,minWidth:0 }}>
-                      <div style={{ fontFamily:"var(--heading)",fontSize:15,fontWeight:700,color:"var(--text)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{p.name}</div>
+                      <div style={{ ...sectionHeader, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{p.name}</div>
                       <div style={{ fontFamily:"var(--mono)",fontSize:10,color:"var(--muted)" }}>{pTotal} tasks · {pDone} done</div>
                     </div>
-                    <div role="button" onClick={(e) => { e.stopPropagation(); if (confirm(`Delete project "${p.name}"?`)) deleteProject(p.id); }} style={{ width:28,height:28,borderRadius:7,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",color:"var(--muted)",transition:"all 0.15s" }}
+                    <div role="button" onClick={(e) => { e.stopPropagation(); setConfirmDelete({ id: p.id, title: p.name, type: "project" }); }} style={{ width:28,height:28,borderRadius:7,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",color:"var(--muted)",transition:"all 0.15s" }}
                       onMouseEnter={e => { e.currentTarget.style.color="#EF4444"; e.currentTarget.style.background="rgba(239,68,68,0.08)"; }}
                       onMouseLeave={e => { e.currentTarget.style.color="var(--muted)"; e.currentTarget.style.background="transparent"; }}
                     ><Trash2 size={13}/></div>
@@ -97,7 +99,7 @@ export default function WorkspacePage({
           {/* Unassigned tasks */}
           {unassignedTasks.length > 0 && (
             <div style={{ marginTop:24 }}>
-              <div style={{ fontFamily:"var(--mono)",fontSize:10,color:"var(--muted)",fontWeight:600,marginBottom:10,textTransform:"uppercase",letterSpacing:1 }}>Unassigned Tasks</div>
+              <div style={{ ...monoLabel, fontSize:10, marginBottom:10 }}>Unassigned Tasks</div>
               {unassignedTasks.map((t,i) => <TaskRow key={t.id} task={t} idx={i} showWs={false} />)}
             </div>
           )}
@@ -109,7 +111,7 @@ export default function WorkspacePage({
           <div style={{ marginBottom:14 }}><Btn primary color={activeWs.color} onClick={() => setShowWsNote(true)}>+ New Note</Btn></div>
           {allNotes.length === 0 && <div style={{ fontFamily:"var(--body)",fontSize:13,color:"var(--muted)",padding:20,textAlign:"center" }}>No notes yet.</div>}
           <div className="notes-grid" style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:12 }}>
-            {allNotes.map((n,i) => (
+            {allNotes.map((n,_i) => (
               <Glass key={n.id} hover style={{ padding:16,cursor:"pointer" }} onClick={() => n.taskId ? goTask(n.taskId) : null}>
                 <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6 }}>
                   <div style={{ fontFamily:"var(--heading)",fontSize:13,fontWeight:700,color:"var(--text)" }}>{n.title || n.taskTitle}</div>
@@ -148,6 +150,16 @@ export default function WorkspacePage({
           ))}
         </div>
       )}
+
+      <ConfirmModal
+        item={confirmDelete}
+        onConfirm={() => {
+          if (confirmDelete.type === "workspace") deleteWorkspace(confirmDelete.id);
+          else deleteProject(confirmDelete.id);
+          setConfirmDelete(null);
+        }}
+        onCancel={() => setConfirmDelete(null)}
+      />
     </div>
   );
 }

@@ -3,6 +3,8 @@ import {
   Coffee, Music, Camera, Globe, Lightbulb, Rocket, Compass,
   Palette, Hash, Anchor, Award, Bell, Sprout, TreePine, Mountain,
   Sparkles, Target, Bird, Waves,
+  Shield, Bug, Terminal, GitBranch, Cpu, Lock, FlaskConical, Network,
+  AlertTriangle, Zap, Database, Server,
 } from "lucide-react";
 
 // ═══════════════════════════════════════
@@ -29,7 +31,27 @@ export const WS_ICON_OPTIONS = [
   { key: "Anchor", component: Anchor },
   { key: "Award", component: Award },
   { key: "Bell", component: Bell },
+  { key: "Shield", component: Shield },
+  { key: "Bug", component: Bug },
+  { key: "Terminal", component: Terminal },
+  { key: "GitBranch", component: GitBranch },
+  { key: "Cpu", component: Cpu },
+  { key: "Lock", component: Lock },
+  { key: "FlaskConical", component: FlaskConical },
+  { key: "Network", component: Network },
+  { key: "Database", component: Database },
+  { key: "Server", component: Server },
 ];
+
+export const TASK_TYPES = [
+  { key: "feature",  label: "Feature",  color: "#6366F1", icon: "Rocket" },
+  { key: "bug",      label: "Bug",      color: "#EF4444", icon: "Bug" },
+  { key: "security", label: "Security", color: "#F59E0B", icon: "Shield" },
+  { key: "debt",     label: "Tech Debt",color: "#8B5CF6", icon: "Wrench" },
+  { key: "incident", label: "Incident", color: "#FF3D3D", icon: "AlertTriangle" },
+];
+
+export const STORY_POINTS = [1, 2, 3, 5, 8, 13, 21];
 
 export const WS_COLOR_OPTIONS = [
   "#5B8DEF", "#E87B7B", "#A78BFA", "#4ADE80", "#FBBF24",

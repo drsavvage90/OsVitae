@@ -3,6 +3,58 @@ import { Glass, Ring, Btn } from "../ui";
 import { supabase } from "../../lib/supabase";
 import { getUserId } from "../../lib/getUserId";
 import { logger } from "../../lib/logger";
+import { sectionHeader } from "../../lib/styles";
+
+function SprintBanner({ activeSprint, sprintTasks }) {
+  if (!activeSprint) return null;
+
+  const doneTasks = sprintTasks.filter(t => t.done || t.status === "done");
+  const totalSP = sprintTasks.reduce((s, t) => s + (t.storyPoints || 0), 0);
+  const doneSP = doneTasks.reduce((s, t) => s + (t.storyPoints || 0), 0);
+  const pct = totalSP > 0
+    ? Math.round((doneSP / totalSP) * 100)
+    : sprintTasks.length > 0 ? Math.round((doneTasks.length / sprintTasks.length) * 100) : 0;
+
+  const now = new Date();
+  const start = new Date(activeSprint.startDate);
+  const end = new Date(activeSprint.endDate);
+  const currentDay = Math.max(1, Math.ceil((now - start) / (1000 * 60 * 60 * 24)));
+  const totalDays = Math.max(1, Math.ceil((end - start) / (1000 * 60 * 60 * 24)));
+  const daysLeft = Math.max(0, Math.ceil((end - now) / (1000 * 60 * 60 * 24)));
+
+  const overdue = now > end;
+  const expectedPct = Math.min(100, Math.round((currentDay / totalDays) * 100));
+  const status = overdue ? "overdue" : pct < expectedPct - 15 ? "at-risk" : "on-track";
+  const statusColors = { "on-track": "#22C55E", "at-risk": "#F59E0B", overdue: "#EF4444" };
+  const statusLabel = { "on-track": "On Track", "at-risk": "At Risk", overdue: "Overdue" };
+
+  return (
+    <Glass style={{ padding: "16px 20px", marginBottom: 18, display: "flex", alignItems: "center", gap: 20 }}>
+      {/* Left: name + goal */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ ...sectionHeader, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{activeSprint.name}</div>
+        {activeSprint.goal && <div style={{ fontFamily: "var(--body)", fontSize: 12, color: "var(--muted)", marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{activeSprint.goal}</div>}
+      </div>
+
+      {/* Center: ring */}
+      <div style={{ position: "relative", width: 44, height: 44, flexShrink: 0 }}>
+        <Ring percent={pct} size={44} stroke={4} color="#22C55E" />
+        <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--mono)", fontSize: 10, fontWeight: 700, color: "var(--text)" }}>{pct}%</div>
+      </div>
+
+      {/* Right: day counter + status */}
+      <div style={{ textAlign: "right", flexShrink: 0 }}>
+        <div style={{ fontFamily: "var(--heading)", fontSize: 13, fontWeight: 700, color: "var(--text)" }}>Day {currentDay} of {totalDays}</div>
+        <div style={{ fontFamily: "var(--mono)", fontSize: 10, color: "var(--muted)", marginTop: 1 }}>{daysLeft} day{daysLeft !== 1 ? "s" : ""} left</div>
+        <span style={{
+          display: "inline-block", marginTop: 4, fontFamily: "var(--mono)", fontSize: 9, fontWeight: 700,
+          color: statusColors[status], background: `${statusColors[status]}18`,
+          padding: "2px 8px", borderRadius: 6, textTransform: "uppercase",
+        }}>{statusLabel[status]}</span>
+      </div>
+    </Glass>
+  );
+}
 
 const SECTIONS = [
   { key: "morning", label: "Morning", icon: Sun, color: "#FBBF24" },
@@ -116,7 +168,7 @@ export default function TodayPage({
   intentionText, setIntentionText, editingIntention, setEditingIntention,
   setNewTaskWs, setShowNewTask, flash, inputStyle,
   rewardText, setRewardText, editingReward, setEditingReward,
-  xp, level,
+  xp, level, sprints,
 }) {
   const taskPct = totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0;
   const today = new Date().toISOString().split("T")[0];
@@ -242,6 +294,13 @@ export default function TodayPage({
           </div>
         </div>
       </div>
+
+      {/* Sprint banner */}
+      {(() => {
+        const activeSprint = (sprints || []).find(s => s.status === "active");
+        const sprintTasks = activeSprint ? tasks.filter(t => t.sprint_id === activeSprint.id) : [];
+        return <SprintBanner activeSprint={activeSprint} sprintTasks={sprintTasks} />;
+      })()}
 
       {/* Schedule + sidebar */}
       <div className="today-layout" style={{ display:"flex",gap:22 }}>

@@ -1,3 +1,4 @@
+/* global process */
 import jwt from 'jsonwebtoken'
 import fs from 'fs'
 import path from 'path'
@@ -19,6 +20,7 @@ if (!p8Path) {
   process.exit(1)
 }
 
+// eslint-disable-next-line security/detect-non-literal-fs-filename -- path comes from a validated CLI arg, not user input
 const privateKey = fs.readFileSync(path.resolve(p8Path), 'utf8')
 
 const token = jwt.sign({}, privateKey, {

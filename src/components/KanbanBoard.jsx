@@ -2,9 +2,11 @@ import { useState, useCallback } from "react";
 import {
   Check, Timer, Trash2,
   ChevronDown, SlidersHorizontal, Eye, EyeOff,
+  AlertTriangle,
 } from "lucide-react";
-import { Btn } from "./ui";
-import { getWsIcon } from "../lib/constants";
+import { Btn, ConfirmModal } from "./ui";
+import { getWsIcon, TASK_TYPES } from "../lib/constants";
+import { badgeStyle, priorityDot, cardStyle } from "../lib/styles";
 
 // ═══════════════════════════════════════
 //  GROUPING CONFIGURATIONS
@@ -34,6 +36,7 @@ const GROUPING_OPTIONS = [
   { key: "section",   label: "Time of Day" },
   { key: "workspace", label: "Workspace" },
   { key: "project",   label: "Project" },
+  { key: "sprint",    label: "Sprint" },
 ];
 
 const SORT_OPTIONS = [
@@ -48,7 +51,7 @@ const PRIORITY_ORDER = { high: 0, medium: 1, low: 2 };
 // ═══════════════════════════════════════
 //  KANBAN CARD
 // ═══════════════════════════════════════
-function KanbanCard({ task, ws, project, pColors, goTask, toggleTask, deleteTask, startFocus, onDragStart, onDragEnd }) {
+function KanbanCard({ task, ws, project, pColors, goTask, toggleTask, onRequestDelete, startFocus, onDragStart, onDragEnd }) {
   const subDone = task.subtasks.filter(s => s.done).length;
   const progress = task.subtasks.length > 0 ? (subDone / task.subtasks.length) * 100 : 0;
 
@@ -59,15 +62,12 @@ function KanbanCard({ task, ws, project, pColors, goTask, toggleTask, deleteTask
       onDragEnd={onDragEnd}
       onClick={() => goTask(task.id)}
       style={{
+        ...cardStyle,
         background: task.done ? "var(--done-bg)" : "var(--card-bg)",
-        borderRadius: 10,
-        border: "1px solid var(--card-border)",
-        padding: "12px 14px",
         cursor: "grab",
         opacity: task.done ? 0.55 : 1,
-        transition: "all 0.2s ease",
-        boxShadow: "var(--card-shadow-sm)",
         position: "relative",
+        ...(task.blocked ? { borderLeft: "3px solid #EF4444" } : {}),
       }}
       onMouseEnter={e => {
         if (!task.done) {
@@ -84,6 +84,7 @@ function KanbanCard({ task, ws, project, pColors, goTask, toggleTask, deleteTask
     >
       {/* Header: checkbox + priority + title */}
       <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+        {task.blocked && <AlertTriangle size={10} color="#EF4444" style={{ flexShrink: 0, marginTop: 4 }} />}
         <div onClick={e => { e.stopPropagation(); toggleTask(task.id); }} style={{
           width: 18, height: 18, borderRadius: 5, flexShrink: 0, marginTop: 1,
           background: task.done ? (ws?.color || "var(--primary)") : "transparent",
@@ -94,7 +95,7 @@ function KanbanCard({ task, ws, project, pColors, goTask, toggleTask, deleteTask
 
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <div style={{ width: 6, height: 6, borderRadius: "50%", background: pColors[task.priority], flexShrink: 0 }} />
+            <div style={priorityDot(pColors[task.priority])} />
             <span style={{
               fontFamily: "var(--heading)", fontSize: 13, fontWeight: 600, color: "var(--text)",
               textDecoration: task.done ? "line-through" : "none",
@@ -130,18 +131,10 @@ function KanbanCard({ task, ws, project, pColors, goTask, toggleTask, deleteTask
       {/* Badges */}
       <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
         {ws && (
-          <span style={{
-            display: "inline-flex", alignItems: "center", gap: 3,
-            background: `${ws.color}14`, padding: "2px 8px", borderRadius: 6,
-            fontFamily: "var(--mono)", fontSize: 9, color: ws.color, fontWeight: 600,
-          }}>{getWsIcon(ws.icon, 9)} {ws.name}</span>
+          <span style={badgeStyle(ws.color)}>{getWsIcon(ws.icon, 9)} {ws.name}</span>
         )}
         {project && (
-          <span style={{
-            display: "inline-flex", alignItems: "center", gap: 3,
-            background: `${project.color}14`, padding: "2px 8px", borderRadius: 6,
-            fontFamily: "var(--mono)", fontSize: 9, color: project.color, fontWeight: 600,
-          }}>{getWsIcon(project.icon, 9)} {project.name}</span>
+          <span style={badgeStyle(project.color)}>{getWsIcon(project.icon, 9)} {project.name}</span>
         )}
         {task.totalPomos > 0 && (
           <span style={{ fontFamily: "var(--mono)", fontSize: 9, color: "var(--muted)" }}>
@@ -161,6 +154,18 @@ function KanbanCard({ task, ws, project, pColors, goTask, toggleTask, deleteTask
             background: "rgba(251,191,36,0.08)", padding: "2px 6px", borderRadius: 6, fontWeight: 600,
           }}>★</span>
         )}
+        {task.storyPoints && (
+          <span style={{
+            fontFamily: "var(--mono)", fontSize: 9, color: "#6366F1", fontWeight: 600,
+            background: "rgba(99,102,241,0.08)", padding: "2px 6px", borderRadius: 6,
+          }}>SP {task.storyPoints}</span>
+        )}
+        {task.taskType && task.taskType !== "feature" && (() => {
+          const tt = TASK_TYPES.find(t => t.key === task.taskType);
+          return tt ? (
+            <span style={{ ...badgeStyle(tt.color), padding: "2px 6px" }}>{tt.label}</span>
+          ) : null;
+        })()}
       </div>
 
       {/* Quick actions */}
@@ -170,7 +175,7 @@ function KanbanCard({ task, ws, project, pColors, goTask, toggleTask, deleteTask
       }}>
         <Btn primary color={ws?.color} small style={{ fontSize: 10, padding: "3px 8px" }}
           onClick={e => { e.stopPropagation(); startFocus(task.id); }}>Focus</Btn>
-        <div role="button" onClick={e => { e.stopPropagation(); if (confirm("Delete this task?")) deleteTask(task.id); }}
+        <div role="button" onClick={e => { e.stopPropagation(); onRequestDelete({ id: task.id, title: task.title }); }}
           style={{ width:28, height:28, borderRadius:7, display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", color:"var(--muted)", transition:"all 0.15s" }}
           onMouseEnter={e => { e.currentTarget.style.color = "#EF4444"; e.currentTarget.style.background = "rgba(239,68,68,0.08)"; }}
           onMouseLeave={e => { e.currentTarget.style.color = "var(--muted)"; e.currentTarget.style.background = "transparent"; }}
@@ -183,7 +188,7 @@ function KanbanCard({ task, ws, project, pColors, goTask, toggleTask, deleteTask
 // ═══════════════════════════════════════
 //  KANBAN COLUMN
 // ═══════════════════════════════════════
-function KanbanColumn({ column, tasks, ws, projects, pColors, goTask, toggleTask, deleteTask, startFocus, onDropTask, draggedTaskId, collapsed, onToggleCollapse }) {
+function KanbanColumn({ column, tasks, ws, projects, pColors, goTask, toggleTask, onRequestDelete, startFocus, onDropTask, draggedTaskId: _draggedTaskId, collapsed, onToggleCollapse, wipLimit }) {
   const [dragOver, setDragOver] = useState(false);
 
   const handleDragOver = useCallback((e) => {
@@ -202,8 +207,6 @@ function KanbanColumn({ column, tasks, ws, projects, pColors, goTask, toggleTask
     const taskId = e.dataTransfer.getData("text/plain");
     if (taskId) onDropTask(taskId, column.key);
   }, [column.key, onDropTask]);
-
-  const doneCount = tasks.filter(t => t.done).length;
 
   return (
     <div
@@ -227,18 +230,16 @@ function KanbanColumn({ column, tasks, ws, projects, pColors, goTask, toggleTask
           cursor: "pointer", userSelect: "none",
         }}
       >
-        <div style={{
-          width: 10, height: 10, borderRadius: "50%",
-          background: column.color, flexShrink: 0,
-        }} />
+        <div style={priorityDot(column.color, 10)} />
         <span style={{
           fontFamily: "var(--heading)", fontSize: 13, fontWeight: 700,
           color: "var(--text)", flex: 1,
         }}>{column.label}</span>
         <span style={{
-          fontFamily: "var(--mono)", fontSize: 11, color: "var(--muted)",
-          background: "var(--subtle-bg)", padding: "2px 8px", borderRadius: 8,
-        }}>{tasks.length}</span>
+          fontFamily: "var(--mono)", fontSize: 11, padding: "2px 8px", borderRadius: 8,
+          color: wipLimit && tasks.length > wipLimit ? "#EF4444" : "var(--muted)",
+          background: wipLimit && tasks.length > wipLimit ? "#EF444420" : "var(--subtle-bg)",
+        }}>{wipLimit ? `${tasks.length} / ${wipLimit}` : tasks.length}</span>
         <ChevronDown size={14} style={{
           color: "var(--muted)", transition: "transform 0.2s",
           transform: collapsed ? "rotate(-90deg)" : "rotate(0deg)",
@@ -264,7 +265,7 @@ function KanbanColumn({ column, tasks, ws, projects, pColors, goTask, toggleTask
             return (
               <KanbanCard
                 key={task.id} task={task} ws={w} project={proj} pColors={pColors}
-                goTask={goTask} toggleTask={toggleTask} deleteTask={deleteTask} startFocus={startFocus}
+                goTask={goTask} toggleTask={toggleTask} onRequestDelete={onRequestDelete} startFocus={startFocus}
                 onDragStart={(e) => {
                   e.dataTransfer.setData("text/plain", task.id);
                   e.dataTransfer.effectAllowed = "move";
@@ -283,7 +284,7 @@ function KanbanColumn({ column, tasks, ws, projects, pColors, goTask, toggleTask
 // ═══════════════════════════════════════
 //  SETTINGS PANEL
 // ═══════════════════════════════════════
-function KanbanSettings({ groupBy, setGroupBy, sortBy, setSortBy, sortAsc, setSortAsc, hideDone, setHideDone, filterPriority, setFilterPriority, filterWs, setFilterWs, ws, onClose }) {
+function KanbanSettings({ groupBy, setGroupBy, sortBy, setSortBy, sortAsc, setSortAsc, hideDone, setHideDone, filterPriority, setFilterPriority, filterWs, setFilterWs, ws, onClose: _onClose }) {
   return (
     <div style={{
       background: "var(--card-bg)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
@@ -382,16 +383,18 @@ function KanbanSettings({ groupBy, setGroupBy, sortBy, setSortBy, sortAsc, setSo
 // ═══════════════════════════════════════
 //  MAIN KANBAN BOARD
 // ═══════════════════════════════════════
-export default function KanbanBoard({ tasks, ws, projects, pColors, goTask, toggleTask, deleteTask, startFocus, updateTaskStatus, updateTaskField }) {
+export default function KanbanBoard({ tasks, ws, projects, sprints = [], activeProjectId, pColors, goTask, toggleTask, deleteTask, startFocus, updateTaskStatus, updateTaskField }) {
   const [groupBy, setGroupBy] = useState("status");
   const [sortBy, setSortBy] = useState("priority");
   const [sortAsc, setSortAsc] = useState(true);
   const [hideDone, setHideDone] = useState(false);
   const [filterPriority, setFilterPriority] = useState("all");
   const [filterWs, setFilterWs] = useState("all");
+  const [filterSprint, setFilterSprint] = useState("all");
   const [showSettings, setShowSettings] = useState(false);
   const [collapsedCols, setCollapsedCols] = useState({});
-  const [draggedTaskId, setDraggedTaskId] = useState(null);
+  const [draggedTaskId] = useState(null);
+  const [confirmDelete, setConfirmDelete] = useState(null);
 
   // ─── Filter tasks ───
   let filtered = [...tasks];
@@ -399,6 +402,11 @@ export default function KanbanBoard({ tasks, ws, projects, pColors, goTask, togg
   if (filterPriority !== "all") filtered = filtered.filter(t => t.priority === filterPriority);
   if (filterWs === "none") filtered = filtered.filter(t => !t.wsId);
   else if (filterWs !== "all") filtered = filtered.filter(t => t.wsId === filterWs);
+  if (filterSprint === "active") filtered = filtered.filter(t => {
+    const sp = sprints.find(s => s.id === t.sprint_id);
+    return sp && sp.status === "active";
+  });
+  else if (filterSprint !== "all") filtered = filtered.filter(t => t.sprint_id === filterSprint);
 
   // ─── Sort tasks ───
   const sortFn = (a, b) => {
@@ -441,6 +449,13 @@ export default function KanbanBoard({ tasks, ws, projects, pColors, goTask, togg
       ...projects.filter(p => usedProjIds.has(p.id)).map(p => ({ key: p.id, label: p.name, color: p.color })),
     ];
     getColumnKey = (t) => t.projectId || "__none__";
+  } else if (groupBy === "sprint") {
+    const usedSprintIds = new Set(filtered.map(t => t.sprint_id).filter(Boolean));
+    columns = [
+      { key: "__none__", label: "Backlog", color: "var(--muted)" },
+      ...sprints.filter(s => usedSprintIds.has(s.id)).map(s => ({ key: s.id, label: s.name, color: s.color || "var(--primary)" })),
+    ];
+    getColumnKey = (t) => t.sprint_id || "__none__";
   }
 
   // ─── Group tasks into columns ───
@@ -485,6 +500,12 @@ export default function KanbanBoard({ tasks, ws, projects, pColors, goTask, togg
       if (task && task.projectId !== newProjId) {
         updateTaskField(taskId, "projectId", newProjId);
       }
+    } else if (groupBy === "sprint") {
+      const task = tasks.find(t => t.id === taskId);
+      const newSprintId = targetColumnKey === "__none__" ? null : targetColumnKey;
+      if (task && task.sprint_id !== newSprintId) {
+        updateTaskField(taskId, "sprint_id", newSprintId);
+      }
     }
   }, [groupBy, tasks, updateTaskStatus, updateTaskField]);
 
@@ -492,6 +513,14 @@ export default function KanbanBoard({ tasks, ws, projects, pColors, goTask, togg
   const toggleCollapse = (key) => {
     setCollapsedCols(prev => ({ ...prev, [key]: !prev[key] }));
   };
+
+  // ─── WIP limits (status grouping only) ───
+  const activeProject = activeProjectId ? projects.find(p => p.id === activeProjectId) : null;
+  const wipLimits = groupBy === "status" && activeProject ? {
+    todo: activeProject.wipLimitTodo ?? null,
+    in_progress: activeProject.wipLimitInProgress ?? null,
+    in_review: activeProject.wipLimitInReview ?? null,
+  } : {};
 
   // Stats
   const totalShown = filtered.length;
@@ -516,6 +545,21 @@ export default function KanbanBoard({ tasks, ws, projects, pColors, goTask, togg
             }}>{opt.label}</button>
           ))}
         </div>
+
+        {/* Sprint filter pills */}
+        {sprints.length > 0 && (
+          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            <span style={{ fontFamily: "var(--body)", fontSize: 11, color: "var(--muted)", fontWeight: 600, marginRight: 4 }}>Sprint:</span>
+            {[{ key: "all", label: "All" }, { key: "active", label: "Active" }, ...sprints.map(s => ({ key: s.id, label: s.name }))].map(opt => (
+              <button key={opt.key} onClick={() => setFilterSprint(opt.key)} style={{
+                padding: "4px 10px", borderRadius: 6, fontSize: 11, fontFamily: "var(--body)", fontWeight: 600, cursor: "pointer",
+                background: filterSprint === opt.key ? "var(--primary)" : "var(--subtle-bg)",
+                color: filterSprint === opt.key ? "var(--text-on-primary)" : "var(--muted)",
+                border: "none", transition: "all 0.15s",
+              }}>{opt.label}</button>
+            ))}
+          </div>
+        )}
 
         <div style={{ flex: 1 }} />
 
@@ -565,14 +609,21 @@ export default function KanbanBoard({ tasks, ws, projects, pColors, goTask, togg
             tasks={columnTasks[col.key] || []}
             ws={ws} projects={projects} pColors={pColors}
             goTask={goTask} toggleTask={toggleTask}
-            deleteTask={deleteTask} startFocus={startFocus}
+            onRequestDelete={setConfirmDelete} startFocus={startFocus}
             onDropTask={handleDropTask}
             draggedTaskId={draggedTaskId}
             collapsed={!!collapsedCols[col.key]}
             onToggleCollapse={() => toggleCollapse(col.key)}
+            wipLimit={wipLimits[col.key] ?? null}
           />
         ))}
       </div>
+
+      <ConfirmModal
+        item={confirmDelete}
+        onConfirm={() => { deleteTask(confirmDelete.id); setConfirmDelete(null); }}
+        onCancel={() => setConfirmDelete(null)}
+      />
     </div>
   );
 }

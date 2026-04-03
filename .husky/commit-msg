@@ -1,0 +1,15 @@
+COMMIT_MSG=$(head -1 "$1")
+
+if ! echo "$COMMIT_MSG" | grep -qE '^(feat|fix|security|chore|docs|test|refactor|ci)(\(.+\))?:'; then
+  echo ""
+  echo "ERROR: Commit message must follow conventional format."
+  echo "Valid prefixes: feat:, fix:, security:, chore:, docs:, test:, refactor:, ci:"
+  echo ""
+  echo "Examples:"
+  echo "  feat: add user authentication"
+  echo "  fix(auth): resolve token expiry bug"
+  echo "  chore(deps): update dependencies"
+  echo ""
+  echo "Your message: $COMMIT_MSG"
+  exit 1
+fi

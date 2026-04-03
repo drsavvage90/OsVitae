@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { Check, Flame, Trash2, Pencil } from "lucide-react";
-import { Glass, Btn } from "../ui";
+import { Glass, Btn, ConfirmModal } from "../ui";
 import { getWsIcon } from "../../lib/constants";
 import { frequencyLabel, daysForFrequency } from "../../hooks/useHabits";
 
 export default function HabitsPage({ habits, setShowNewHabit, toggleHabit, deleteHabit, setEditingHabit }) {
   const [hoveredId, setHoveredId] = useState(null);
+  const [confirmDelete, setConfirmDelete] = useState(null);
   const today = new Date().toISOString().split("T")[0];
   const todayDow = new Date().getDay();
   const scheduledToday = habits.filter(h => {
@@ -74,7 +75,7 @@ export default function HabitsPage({ habits, setShowNewHabit, toggleHabit, delet
                       onMouseEnter={e => { e.currentTarget.style.color="var(--primary)"; e.currentTarget.style.background="var(--subtle-bg)"; }}
                       onMouseLeave={e => { e.currentTarget.style.color="var(--muted)"; e.currentTarget.style.background="transparent"; }}
                     ><Pencil size={13}/></div>
-                    <div role="button" onClick={(e) => { e.stopPropagation(); if (confirm("Delete this habit?")) deleteHabit(h.id); }} style={{ width:28,height:28,borderRadius:7,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",color:"var(--muted)",transition:"all 0.15s" }}
+                    <div role="button" onClick={(e) => { e.stopPropagation(); setConfirmDelete({ id: h.id, title: h.name }); }} style={{ width:28,height:28,borderRadius:7,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",color:"var(--muted)",transition:"all 0.15s" }}
                       onMouseEnter={e => { e.currentTarget.style.color="#EF4444"; e.currentTarget.style.background="rgba(239,68,68,0.08)"; }}
                       onMouseLeave={e => { e.currentTarget.style.color="var(--muted)"; e.currentTarget.style.background="transparent"; }}
                     ><Trash2 size={13}/></div>
@@ -85,6 +86,12 @@ export default function HabitsPage({ habits, setShowNewHabit, toggleHabit, delet
           );
         })}
       </div>
+
+      <ConfirmModal
+        item={confirmDelete}
+        onConfirm={() => { deleteHabit(confirmDelete.id); setConfirmDelete(null); }}
+        onCancel={() => setConfirmDelete(null)}
+      />
     </div>
   );
 }

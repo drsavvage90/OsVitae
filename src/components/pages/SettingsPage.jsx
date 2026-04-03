@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { User, Save, Download, Trash2, KeyRound, Mail, Home, UserPlus, Check, X } from "lucide-react";
 import { Glass } from "../ui";
-import PrivacyPolicy from "../PrivacyPolicy";
 import { supabase } from "../../lib/supabase";
 
 export default function SettingsPage({
@@ -224,12 +223,9 @@ export default function SettingsPage({
 
       {/* Privacy Policy */}
       <Glass style={{ padding:24,marginBottom:20 }}>
-        <details>
-          <summary style={{ fontFamily:"var(--heading)",fontSize:14,fontWeight:700,color:"var(--text)",cursor:"pointer" }}>Privacy Policy</summary>
-          <div style={{ marginTop:16 }}>
-            <PrivacyPolicy />
-          </div>
-        </details>
+        <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ fontFamily:"var(--heading)",fontSize:14,fontWeight:700,color:"var(--text)",textDecoration:"none",display:"flex",alignItems:"center",gap:8 }}>
+          Privacy Policy <span style={{ fontSize:12,color:"var(--muted)" }}>&rarr;</span>
+        </a>
       </Glass>
       </>}
 

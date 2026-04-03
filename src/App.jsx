@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Home, ClipboardList, Timer, Trophy,
   Flame, Gift, Check,
@@ -7,17 +7,17 @@ import {
 } from "lucide-react";
 import { supabase, invokeFunction } from "./lib/supabase";
 import {
-  THEMES, WS_ICON_OPTIONS, WS_COLOR_OPTIONS, getWsIcon,
+  THEMES, WS_ICON_OPTIONS, WS_COLOR_OPTIONS, getWsIcon, TASK_TYPES,
   INIT_WORKSPACES, INIT_TASKS, INIT_TIME_BLOCKS,
 } from "./lib/constants";
-import { Glass, Btn, Modal, Toast } from "./components/ui";
+import { Glass, Btn, Modal, Toast, ConfirmModal } from "./components/ui";
 import { getUserId } from "./lib/getUserId";
 import { logger } from "./lib/logger";
-import { validateTitle, validateDescription, validateName, validateAmount, sanitizeText, MAX_TITLE, MAX_DESC, MAX_NAME } from "./lib/validate";
+import { validateTitle, validateDescription, validateName, sanitizeText, MAX_TITLE, MAX_DESC, MAX_NAME } from "./lib/validate";
 import { useFlash } from "./hooks/useFlash";
 import { useHabits, daysForFrequency } from "./hooks/useHabits";
 import { useInbox } from "./hooks/useInbox";
-import { useWiki } from "./hooks/useWiki";
+
 import { useFinance } from "./hooks/useFinance";
 import { useHousehold } from "./hooks/useHousehold";
 import Sidebar from "./components/Sidebar";
@@ -25,10 +25,7 @@ import RewardsPage from "./components/pages/RewardsPage";
 import AllTasksPage from "./components/pages/AllTasksPage";
 import InboxPage from "./components/pages/InboxPage";
 import HabitsPage from "./components/pages/HabitsPage";
-import WikiPage from "./components/pages/WikiPage";
-import WikiArticlePage from "./components/pages/WikiArticlePage";
 import CalendarPage from "./components/pages/CalendarPage";
-import ReviewPage from "./components/pages/ReviewPage";
 import FinancePage from "./components/pages/FinancePage";
 import SettingsPage from "./components/pages/SettingsPage";
 import TimerPage from "./components/pages/TimerPage";
@@ -36,6 +33,12 @@ import TodayPage from "./components/pages/TodayPage";
 import WorkspacePage from "./components/pages/WorkspacePage";
 import ProjectPage from "./components/pages/ProjectPage";
 import TaskDetailPage from "./components/pages/TaskDetailPage";
+import SprintHubPage from "./components/pages/SprintHubPage";
+import SprintBoardPage from "./components/pages/SprintBoardPage";
+import BacklogPage from "./components/pages/BacklogPage";
+import BurndownPage from "./components/pages/BurndownPage";
+import SecurityIssuesPage from "./components/pages/SecurityIssuesPage";
+import AuditLogPage from "./components/pages/AuditLogPage";
 
 
 
@@ -48,6 +51,7 @@ export default function App() {
   const [activeWsId, setActiveWsId] = useState(null);
   const [activeTaskId, setActiveTaskId] = useState(null);
   const [editingTask, setEditingTask] = useState(null);
+  const [confirmDelete, setConfirmDelete] = useState(null);
   const [wsTab, setWsTab] = useState("Projects");
   const [collapsed, setCollapsed] = useState(false);
   const [themeName, setThemeName] = useState(() => localStorage.getItem("osvitae-theme") || "default");
@@ -66,7 +70,7 @@ export default function App() {
     if (mins <= 0) return null;
     return Math.max(1, Math.round(mins / 30));
   };
-  const [sidebarSections, setSidebarSections] = useState({ home: true, track: false, library: false, workspaces: false });
+  const [sidebarSections, setSidebarSections] = useState({ home: true, scrum: true, track: false, security: false, workspaces: false });
   const [tasks, setTasks] = useState(INIT_TASKS);
   const [xp, setXp] = useState(0);
   const [level, setLevel] = useState(1);
@@ -129,6 +133,11 @@ export default function App() {
   const [editWsColor, setEditWsColor] = useState("");
   const [editWsIcon, setEditWsIcon] = useState("");
   const [projects, setProjects] = useState([]);
+  const [sprints, setSprints] = useState([]);
+  const [epics, setEpics] = useState([]);
+  const [retrospectives, setRetrospectives] = useState([]);
+  const [auditLog, setAuditLog] = useState([]);
+  const [auditLogLoading, setAuditLogLoading] = useState(true);
   const [showNewProject, setShowNewProject] = useState(false);
   const [newProjectName, setNewProjectName] = useState("");
   const [newProjectColor, setNewProjectColor] = useState(WS_COLOR_OPTIONS[0]);
@@ -136,6 +145,7 @@ export default function App() {
   const [newProjectWsId, setNewProjectWsId] = useState(null);
   const [activeProjectId, setActiveProjectId] = useState(null);
   const [newTaskProject, setNewTaskProject] = useState(null);
+  const [newTaskType, setNewTaskType] = useState("feature");
   const [wsNotes, setWsNotes] = useState([]);
   const [wsDocs, setWsDocs] = useState([]);
   const [showWsNote, setShowWsNote] = useState(false);
@@ -149,7 +159,7 @@ export default function App() {
   const [profileData, setProfileData] = useState({
     preferred_name: "", country: "",
   });
-  const [profileLoaded, setProfileLoaded] = useState(false);
+  const [_profileLoaded, setProfileLoaded] = useState(false);
   const [profileSaving, setProfileSaving] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -177,19 +187,9 @@ export default function App() {
   // Inbox
   const {
     inbox, setInbox, newInboxText, setNewInboxText,
-    editingInboxItem, setEditingInboxItem,
+    editingInboxItem: _editingInboxItem, setEditingInboxItem: _setEditingInboxItem,
     addInboxItem, updateInboxItem, triageInbox, dismissInbox,
   } = useInbox(flash);
-
-  // Wiki
-  const {
-    wiki, setWiki, showNewWiki, setShowNewWiki,
-    newWikiTitle, setNewWikiTitle, newWikiCategory, setNewWikiCategory,
-    newWikiContent, setNewWikiContent,
-    activeWikiId, setActiveWikiId,
-    editingWiki, setEditingWiki, editWikiContent, setEditWikiContent,
-    createWikiArticle, saveWikiEdit, deleteWikiArticle: deleteWikiArticleHook,
-  } = useWiki(flash);
 
   // Finance
   const {
@@ -220,7 +220,7 @@ export default function App() {
     addTransaction, deleteTransaction, updateTransaction,
     saveBudget, addIncome, togglePaid,
     addBill, deleteBill, updateBill,
-    customCategories, setCustomCategories, getCategories,
+    customCategories: _customCategories, setCustomCategories, getCategories,
     addCategory, renameCategory, deleteCategory, seedDefaultCategories,
   } = useFinance(flash);
 
@@ -312,7 +312,7 @@ export default function App() {
     const task = tasks.find(t => t.id === id);
     if (!task) return;
     setTasks(ts => ts.map(t => t.id === id ? { ...t, [field]: value } : t));
-    const dbField = field === "wsId" ? "workspace_id" : field === "projectId" ? "project_id" : field === "dueDate" ? "due_date" : field === "dueTime" ? "due_time" : field === "endTime" ? "end_time" : field;
+    const dbField = field === "wsId" ? "workspace_id" : field === "projectId" ? "project_id" : field === "dueDate" ? "due_date" : field === "dueTime" ? "due_time" : field === "endTime" ? "end_time" : field === "taskType" ? "type" : field;
     const { error } = await supabase.from("tasks").update({ [dbField]: value }).eq("id", id);
     if (error) {
       logger.error(`Failed to update task ${field}:`, error);
@@ -335,6 +335,31 @@ export default function App() {
       return;
     }
     flash("Task deleted.");
+  };
+
+  const onSaveRetro = async (retro) => {
+    const userId = await getUserId();
+    if (!userId) return;
+    const { data, error } = await supabase.from("retrospectives").insert({
+      user_id: userId, sprint_id: retro.sprint_id,
+      went_well: retro.went_well, improvements: retro.improvements,
+      action_items: retro.action_items, mood: retro.mood,
+    }).select().single();
+    if (error) { logger.error("Failed to save retrospective:", error); flash("Save failed — please try again."); return; }
+    setRetrospectives(rs => [data, ...rs]);
+    flash("Retrospective saved!");
+  };
+
+  const addEpic = async (epic) => {
+    const userId = await getUserId();
+    if (!userId) return;
+    const { data, error } = await supabase.from("epics").insert({
+      user_id: userId, title: epic.title, description: epic.description || null,
+      color: epic.color || "#6366F1", workspace_id: epic.wsId || null,
+    }).select().single();
+    if (error) { logger.error("Failed to create epic:", error); flash("Failed to create epic."); return; }
+    setEpics(es => [...es, data]);
+    flash("Epic created!");
   };
 
   const saveEditTask = async () => {
@@ -407,16 +432,18 @@ export default function App() {
     const endTime = newTaskEndTime || null;
     const section = newTaskSection, reward = newTaskReward || null, totalPomos = newTaskPomos;
     const subtaskObjs = newTaskSubtasks.map((text, i) => ({ id: crypto.randomUUID(), text, done: false, xp: 10, position: i }));
+    const taskType = newTaskType || "feature";
     const newTask = {
       id, title, desc, description: desc, priority,
       wsId, projectId, dueTime, endTime, dueDate, done: false, status: "todo", section,
       subtasks: subtaskObjs, notes: [], attachments: [], totalPomos, donePomos: 0, reward,
+      taskType,
     };
     setTasks(ts => [...ts, newTask]);
     setNewTaskTitle(""); setNewTaskDesc(""); setNewTaskDueDate(""); setNewTaskDueTime(""); setNewTaskEndTime("");
     setNewTaskSection("afternoon"); setNewTaskReward(""); setNewTaskPomos(2);
     setNewTaskSubtasks([]); setNewSubtaskText(""); setShowNewTask(false);
-    setNewTaskProject(null);
+    setNewTaskProject(null); setNewTaskType("feature");
     flash("Task created!");
     const userId = await getUserId();
     if (!userId) return;
@@ -426,7 +453,7 @@ export default function App() {
       workspace_id: wsId || null,
       project_id: projectId,
       due_date: dueDate, due_time: dueTime, end_time: endTime,
-      reward, total_pomos: totalPomos,
+      reward, total_pomos: totalPomos, type: taskType,
     });
     if (error) {
       logger.error("Failed to save task:", error);
@@ -569,12 +596,6 @@ export default function App() {
     }
   };
 
-  // ─── NAVIGATION-AWARE DELETE WRAPPERS ───
-  const deleteWikiArticle = (id) => {
-    const wasActive = deleteWikiArticleHook(id);
-    if (wasActive) setPage("wiki");
-  };
-
   const createTimeBlock = async () => {
     if (!newBlockTitle.trim()) return;
     const id = crypto.randomUUID();
@@ -714,8 +735,6 @@ export default function App() {
   const hour = new Date().getHours();
   const displayName = profileData.preferred_name || "";
   const greeting = (hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening") + (displayName ? `, ${displayName}` : "");
-  const activeWiki = wiki.find(a => a.id === activeWikiId);
-
   const filteredTasks = searchQuery
     ? tasks.filter(t => t.title.toLowerCase().includes(searchQuery.toLowerCase()) || (t.desc || "").toLowerCase().includes(searchQuery.toLowerCase()))
     : tasks;
@@ -727,8 +746,6 @@ export default function App() {
   const goWs = (id) => { setActiveWsId(id); setWsTab("Projects"); setPage("workspace"); setShowMobileSidebar(false); };
   const goProject = (id) => { setActiveProjectId(id); const proj = projects.find(p => p.id === id); if (proj) setActiveWsId(proj.wsId); setPage("project"); setShowMobileSidebar(false); };
   const goToday = () => { setPage("today"); setShowMobileSidebar(false); };
-  const goWiki = (id) => { setActiveWikiId(id); setEditingWiki(false); setPage("wikiArticle"); };
-
   // ─── INPUT STYLE ───
   const inputStyle = {
     width:"100%", padding:"10px 14px", borderRadius:10, border:"1px solid var(--border)",
@@ -760,7 +777,10 @@ export default function App() {
         }}>{task.done && <Check size={12} />}</div>
         <div style={{ width:6,height:6,borderRadius:"50%",background:pColors[task.priority],flexShrink:0 }} />
         <div style={{ flex:1,minWidth:0 }}>
-          <span style={{ fontFamily:"var(--heading)",fontSize:14,fontWeight:600,color:"var(--text)",textDecoration:task.done?"line-through":"none" }}>{task.title}</span>
+          <span style={{ display:"flex",alignItems:"center",gap:6 }}>
+            {["security","bug","incident"].includes(task.taskType) && (() => { const tt = TASK_TYPES.find(t => t.key === task.taskType); return tt ? <span style={{ fontFamily:"var(--mono)",fontSize:9,fontWeight:700,color:tt.color,background:`${tt.color}18`,padding:"1px 6px",borderRadius:6,textTransform:"uppercase",flexShrink:0 }}>{tt.label}</span> : null; })()}
+            <span style={{ fontFamily:"var(--heading)",fontSize:14,fontWeight:600,color:"var(--text)",textDecoration:task.done?"line-through":"none" }}>{task.title}</span>
+          </span>
           {task.desc && <div style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{task.desc}</div>}
           <div style={{ display:"flex",alignItems:"center",gap:8,marginTop:6,flexWrap:"wrap" }}>
             {showWs && w && <span style={{ display:"inline-flex",alignItems:"center",gap:4,background:`${w?.color}14`,padding:"2px 10px",borderRadius:8,fontFamily:"var(--mono)",fontSize:10,color:w?.color,fontWeight:600 }}>{getWsIcon(w?.icon, 10)} {w?.name}</span>}
@@ -773,7 +793,7 @@ export default function App() {
           </div>
         </div>
         <Btn primary color={w?.color} small onClick={e => { e.stopPropagation(); startFocus(task.id); }}>Focus</Btn>
-        <div onClick={e => { e.stopPropagation(); if (confirm("Delete this task?")) deleteTask(task.id); }} style={{ cursor:"pointer",color:"var(--muted)",padding:4,borderRadius:6,display:"flex",alignItems:"center" }}
+        <div onClick={e => { e.stopPropagation(); setConfirmDelete({ id: task.id, title: task.title }); }} style={{ cursor:"pointer",color:"var(--muted)",padding:4,borderRadius:6,display:"flex",alignItems:"center" }}
           onMouseEnter={e => e.currentTarget.style.color="#EF4444"}
           onMouseLeave={e => e.currentTarget.style.color="var(--muted)"}
         ><Trash2 size={14} /></div>
@@ -880,25 +900,28 @@ export default function App() {
 
     // Load all data in parallel
     const [
-      { data: dbBlocks }, { data: dbWorkspaces }, { data: dbProjects }, { data: dbTasks },
+      { data: dbBlocks }, { data: dbWorkspaces }, { data: dbProjects }, { data: dbSprints }, { data: dbEpics }, { data: dbRetrospectives }, { data: dbTasks },
       { data: dbSubtasks }, { data: dbTaskNotes },
       { data: dbHabits }, { data: dbCompletions },
-      { data: dbInbox }, { data: dbWiki },
+      { data: dbInbox },
       { data: dbWsNotes }, { data: dbWsDocs },
       { data: dbTransactions }, { data: dbBills }, { data: dbBillPayments }, { data: dbBudgets },
       { data: dbFinanceCategories },
       { data: dbProfile },
+      { data: dbAuditLog },
     ] = await Promise.all([
       supabase.from("time_blocks").select("*").eq("user_id", userId),
       supabase.from("workspaces").select("*").eq("user_id", userId).order("position"),
       supabase.from("projects").select("*").eq("user_id", userId).order("position"),
+      supabase.from("sprints").select("*").eq("user_id", userId).order("start_date"),
+      supabase.from("epics").select("*").eq("user_id", userId).order("position"),
+      supabase.from("retrospectives").select("*").eq("user_id", userId).order("created_at", { ascending: false }),
       supabase.from("tasks").select("*").eq("user_id", userId),
       supabase.from("subtasks").select("*").eq("user_id", userId),
       supabase.from("task_notes").select("*").eq("user_id", userId).order("created_at", { ascending: false }),
       supabase.from("habits").select("*").eq("user_id", userId),
       supabase.from("habit_completions").select("*").eq("user_id", userId),
       supabase.from("inbox_items").select("*").eq("user_id", userId).order("created_at", { ascending: false }),
-      supabase.from("wiki_articles").select("*").eq("user_id", userId),
       supabase.from("workspace_notes").select("*").eq("user_id", userId),
       supabase.from("workspace_docs").select("*").eq("user_id", userId),
       supabase.from("transactions").select("*").eq("user_id", userId),
@@ -907,6 +930,7 @@ export default function App() {
       supabase.from("budgets").select("*").eq("user_id", userId),
       supabase.from("finance_categories").select("*").eq("user_id", userId).order("sort_order"),
       supabase.from("profiles").select("intention_text, reward_text, xp, level, streak, total_pomos_ever, total_tasks_done").eq("id", userId).single(),
+      supabase.from("audit_log").select("*").eq("user_id", userId).order("created_at", { ascending: false }).limit(200),
     ]);
 
     if (dbBlocks) {
@@ -960,8 +984,22 @@ export default function App() {
       setProjects(dbProjects.map(p => ({
         id: p.id, name: p.name, icon: p.icon || "Folder", color: p.color || "#5B8DEF",
         wsId: p.workspace_id,
+        wipLimitTodo: p.wip_limit_todo ?? null,
+        wipLimitInProgress: p.wip_limit_in_progress ?? null,
+        wipLimitInReview: p.wip_limit_in_review ?? null,
       })));
     }
+    if (dbSprints) {
+      setSprints(dbSprints.map(s => ({
+        id: s.id, name: s.name, goal: s.goal, status: s.status || "planning",
+        startDate: s.start_date, endDate: s.end_date,
+        wsId: s.workspace_id, capacity: s.capacity, velocity: s.velocity,
+      })));
+    }
+    if (dbEpics) setEpics(dbEpics);
+    if (dbRetrospectives) setRetrospectives(dbRetrospectives);
+    if (dbAuditLog) setAuditLog(dbAuditLog);
+    setAuditLogLoading(false);
 
     // Build subtask & note maps for tasks
     const subtasksByTask = {};
@@ -986,6 +1024,9 @@ export default function App() {
         subtasks: subtasksByTask[t.id] || [], notes: notesByTask[t.id] || [],
         attachments: [], donePomos: t.done_pomos || 0, totalPomos: t.total_pomos || 0,
         wsId: t.workspace_id || null, projectId: t.project_id || null, tags: [],
+        sprint_id: t.sprint_id || null, epic_id: t.epic_id || null, storyPoints: t.story_points || null,
+        taskType: t.type || "feature", blocked: t.blocked || false,
+        createdAt: t.created_at || null, updatedAt: t.updated_at || null,
       })));
     }
 
@@ -1008,14 +1049,6 @@ export default function App() {
       setInbox(dbInbox.map(i => ({
         id: i.id, text: i.text, triaged: i.triaged || false,
         createdAt: new Date(i.created_at).toLocaleDateString(),
-      })));
-    }
-
-    if (dbWiki) {
-      setWiki(dbWiki.map(a => ({
-        id: a.id, title: a.title, category: a.category || "General",
-        tags: a.tags || [], content: a.content || "",
-        lastUpdated: new Date(a.updated_at || a.created_at).toLocaleDateString(),
       })));
     }
 
@@ -1165,10 +1198,7 @@ export default function App() {
       habits: <><span onClick={goToday} style={{ cursor:"pointer" }}>{homeIcon}</span> / <strong style={{ color:"var(--text)" }}>Habits</strong></>,
       calendar: <><span onClick={goToday} style={{ cursor:"pointer" }}>{homeIcon}</span> / <strong style={{ color:"var(--text)" }}>Calendar</strong></>,
       finance: <><span onClick={goToday} style={{ cursor:"pointer" }}>{homeIcon}</span> / <strong style={{ color:"var(--text)" }}>Finance</strong></>,
-      review: <><span onClick={goToday} style={{ cursor:"pointer" }}>{homeIcon}</span> / <strong style={{ color:"var(--text)" }}>Weekly Review</strong></>,
       inbox: <><span onClick={goToday} style={{ cursor:"pointer" }}>{homeIcon}</span> / <strong style={{ color:"var(--text)" }}>Inbox</strong></>,
-      wiki: <><span onClick={goToday} style={{ cursor:"pointer" }}>{homeIcon}</span> / <strong style={{ color:"var(--text)" }}>Wiki</strong></>,
-      wikiArticle: <><span onClick={goToday} style={{ cursor:"pointer" }}>{homeIcon}</span> / <span onClick={() => setPage("wiki")} style={{ cursor:"pointer" }}>Wiki</span> / <strong style={{ color:"var(--text)" }}>{activeWiki?.title}</strong></>,
     };
     if (page === "workspace") return <><span onClick={goToday} style={{ cursor:"pointer" }}>{homeIcon}</span> / <strong style={{ color:activeWs?.color }}>{activeWs?.name}</strong></>;
     if (page === "project" && activeProject) { const w = ws.find(x=>x.id===activeProject.wsId); return <><span onClick={goToday} style={{ cursor:"pointer" }}>{homeIcon}</span> / <span onClick={() => goWs(activeProject.wsId)} style={{ cursor:"pointer",color:w?.color }}>{w?.name}</span> / <strong style={{ color:activeProject.color }}>{activeProject.name}</strong></>; }
@@ -1342,20 +1372,23 @@ export default function App() {
         </div>
 
         <div className="main-content" style={{ flex:1,overflow:"auto",padding: page === "timer" ? "28px 28px" : "24px 28px", minHeight: 0, display:"flex", flexDirection:"column" }}>
-          {page === "today" && <TodayPage greeting={greeting} totalTasks={totalTasks} doneTasks={doneTasks} totalPomos={totalPomos} donePomos={donePomos} habits={habits} toggleHabit={toggleHabit} streak={streak} themeName={themeName} timerActive={timerActive} timeLeft={timeLeft} fmt={fmt} setTimerTaskId={setTimerTaskId} setPage={setPage} tasks={tasks} ws={ws} projects={projects} goTask={goTask} TaskRow={TaskRow} inbox={inbox} intentionText={intentionText} setIntentionText={setIntentionText} editingIntention={editingIntention} setEditingIntention={setEditingIntention} setNewTaskWs={setNewTaskWs} setShowNewTask={setShowNewTask} flash={flash} inputStyle={inputStyle} timeBlocks={timeBlocks} updateTimeBlock={updateTimeBlock} setShowNewBlock={setShowNewBlock} deleteTimeBlock={deleteTimeBlock} setEditingBlock={setEditingBlock} rewardText={rewardText} setRewardText={setRewardText} editingReward={editingReward} setEditingReward={setEditingReward} createTimeBlockFromTask={createTimeBlockFromTask} xp={xp} level={level} />}
+          {page === "today" && <TodayPage greeting={greeting} totalTasks={totalTasks} doneTasks={doneTasks} totalPomos={totalPomos} donePomos={donePomos} habits={habits} toggleHabit={toggleHabit} streak={streak} themeName={themeName} timerActive={timerActive} timeLeft={timeLeft} fmt={fmt} setTimerTaskId={setTimerTaskId} setPage={setPage} tasks={tasks} ws={ws} projects={projects} goTask={goTask} TaskRow={TaskRow} inbox={inbox} intentionText={intentionText} setIntentionText={setIntentionText} editingIntention={editingIntention} setEditingIntention={setEditingIntention} setNewTaskWs={setNewTaskWs} setShowNewTask={setShowNewTask} flash={flash} inputStyle={inputStyle} timeBlocks={timeBlocks} updateTimeBlock={updateTimeBlock} setShowNewBlock={setShowNewBlock} deleteTimeBlock={deleteTimeBlock} setEditingBlock={setEditingBlock} rewardText={rewardText} setRewardText={setRewardText} editingReward={editingReward} setEditingReward={setEditingReward} createTimeBlockFromTask={createTimeBlockFromTask} xp={xp} level={level} sprints={sprints} />}
           {page === "workspace" && <WorkspacePage activeWs={activeWs} activeWsId={activeWsId} tasks={tasks} projects={projects} wsNotes={wsNotes} wsDocs={wsDocs} wsTab={wsTab} setWsTab={setWsTab} setNewTaskWs={setNewTaskWs} setNewTaskProject={setNewTaskProject} setShowNewTask={setShowNewTask} setShowWsNote={setShowWsNote} setShowWsDoc={setShowWsDoc} deleteWorkspace={deleteWorkspace} deleteWsNote={deleteWsNote} deleteWsDoc={deleteWsDoc} openEditWs={openEditWs} goTask={goTask} goProject={goProject} setShowNewProject={setShowNewProject} setNewProjectWsId={setNewProjectWsId} deleteProject={deleteProject} TaskRow={TaskRow} />}
-          {page === "project" && <ProjectPage activeProject={activeProject} activeProjectId={activeProjectId} activeWs={activeWs} tasks={tasks} wsNotes={wsNotes} wsDocs={wsDocs} setNewTaskWs={setNewTaskWs} setNewTaskProject={setNewTaskProject} setShowNewTask={setShowNewTask} setShowWsNote={setShowWsNote} setShowWsDoc={setShowWsDoc} deleteProject={deleteProject} deleteWsNote={deleteWsNote} deleteWsDoc={deleteWsDoc} goTask={goTask} goWs={goWs} TaskRow={TaskRow} />}
+          {page === "project" && <ProjectPage activeProject={activeProject} activeProjectId={activeProjectId} activeWs={activeWs} tasks={tasks} wsNotes={wsNotes} wsDocs={wsDocs} setNewTaskWs={setNewTaskWs} setNewTaskProject={setNewTaskProject} setShowNewTask={setShowNewTask} setShowWsNote={setShowWsNote} setShowWsDoc={setShowWsDoc} deleteProject={deleteProject} deleteWsNote={deleteWsNote} deleteWsDoc={deleteWsDoc} goTask={goTask} goWs={goWs} TaskRow={TaskRow} sprints={sprints} />}
           {page === "task" && <TaskDetailPage activeTask={activeTask} ws={ws} pColors={pColors} setPage={setPage} page={page} startFocus={startFocus} toggleTask={toggleTask} toggleSubtask={toggleSubtask} setEditingTask={setEditingTask} deleteTask={deleteTask} setShowNewNote={setShowNewNote} deleteTaskNote={deleteTaskNote} flash={flash} />}
           {page === "timer" && <TimerPage timerTask={timerTask} ws={ws} timeLeft={timeLeft} setTimeLeft={setTimeLeft} timerActive={timerActive} setTimerActive={setTimerActive} isBreak={isBreak} setIsBreak={setIsBreak} sessionCount={sessionCount} endTimeRef={endTimeRef} WORK_DURATION={WORK_DURATION} SHORT_BREAK={SHORT_BREAK} LONG_BREAK={LONG_BREAK} CYCLE_LENGTH={CYCLE_LENGTH} fmt={fmt} goToday={goToday} flash={flash} streak={streak} themeName={themeName} />}
           {page === "rewards" && <RewardsPage level={level} xp={xp} themeName={themeName} streak={streak} totalPomosEver={totalPomosEver} donePomos={donePomos} doneTasks={doneTasks} totalTasksDone={totalTasksDone} />}
-          {page === "allTasks" && <AllTasksPage filteredTasks={filteredTasks} setShowNewTask={setShowNewTask} TaskRow={TaskRow} ws={ws} projects={projects} pColors={pColors} goTask={goTask} toggleTask={toggleTask} deleteTask={deleteTask} startFocus={startFocus} updateTaskStatus={updateTaskStatus} updateTaskField={updateTaskField} />}
+          {page === "allTasks" && <AllTasksPage filteredTasks={filteredTasks} setShowNewTask={setShowNewTask} TaskRow={TaskRow} ws={ws} projects={projects} sprints={sprints} activeProjectId={activeProjectId} pColors={pColors} goTask={goTask} toggleTask={toggleTask} deleteTask={deleteTask} startFocus={startFocus} updateTaskStatus={updateTaskStatus} updateTaskField={updateTaskField} />}
           {page === "habits" && <HabitsPage habits={habits} setShowNewHabit={setShowNewHabit} toggleHabit={toggleHabit} deleteHabit={deleteHabit} setEditingHabit={setEditingHabit} />}
           {page === "calendar" && <CalendarPage timeBlocks={timeBlocks} tasks={tasks} ws={ws} projects={projects} setShowNewBlock={setShowNewBlock} deleteTimeBlock={deleteTimeBlock} setEditingBlock={setEditingBlock} goTask={goTask} updateTimeBlock={updateTimeBlock} />}
           {page === "finance" && <FinancePage transactions={transactions} financeTab={financeTab} setFinanceTab={setFinanceTab} setShowNewTransaction={setShowNewTransaction} deleteTransaction={deleteTransaction} setEditingTransaction={setEditingTransaction} saveBudget={saveBudget} addIncome={addIncome} togglePaid={togglePaid} addBill={addBill} deleteBill={deleteBill} setEditingBill={setEditingBill} budgets={budgets} editingBudget={editingBudget} setEditingBudget={setEditingBudget} editBudgetVal={editBudgetVal} setEditBudgetVal={setEditBudgetVal} newIncomeCategory={newIncomeCategory} setNewIncomeCategory={setNewIncomeCategory} newIncomeAmount={newIncomeAmount} setNewIncomeAmount={setNewIncomeAmount} newIncomeDesc={newIncomeDesc} setNewIncomeDesc={setNewIncomeDesc} newIncomeRecurring={newIncomeRecurring} setNewIncomeRecurring={setNewIncomeRecurring} bills={bills} billPayments={billPayments} newBillName={newBillName} setNewBillName={setNewBillName} newBillAmount={newBillAmount} setNewBillAmount={setNewBillAmount} newBillDueDay={newBillDueDay} setNewBillDueDay={setNewBillDueDay} newBillCategory={newBillCategory} setNewBillCategory={setNewBillCategory} inputStyle={inputStyle} getCategories={getCategories} addCategory={addCategory} renameCategory={renameCategory} deleteCategory={deleteCategory} />}
-          {page === "review" && <ReviewPage tasks={tasks} inbox={inbox} habits={habits} toggleHabit={toggleHabit} goTask={goTask} pColors={pColors} />}
           {page === "inbox" && <InboxPage inbox={inbox} newInboxText={newInboxText} setNewInboxText={setNewInboxText} addInboxItem={addInboxItem} triageInbox={triageInbox} dismissInbox={dismissInbox} updateInboxItem={updateInboxItem} setTasks={setTasks} flash={flash} inputStyle={inputStyle} />}
-          {page === "wiki" && <WikiPage wiki={wiki} setShowNewWiki={setShowNewWiki} goWiki={goWiki} />}
-          {page === "wikiArticle" && <WikiArticlePage activeWiki={activeWiki} setPage={setPage} editingWiki={editingWiki} setEditingWiki={setEditingWiki} editWikiContent={editWikiContent} setEditWikiContent={setEditWikiContent} saveWikiEdit={saveWikiEdit} deleteWikiArticle={deleteWikiArticle} inputStyle={inputStyle} />}
+          {page === "retrospective" && <SprintHubPage tasks={tasks} inbox={inbox} habits={habits} toggleHabit={toggleHabit} goTask={goTask} pColors={pColors} sprints={sprints} retrospectives={retrospectives} onSaveRetro={onSaveRetro} auditLog={auditLog} />}
+          {page === "sprintBoard" && <SprintBoardPage sprints={sprints} tasks={tasks} ws={ws} projects={projects} pColors={pColors} goTask={goTask} toggleTask={toggleTask} deleteTask={deleteTask} startFocus={startFocus} updateTaskStatus={updateTaskStatus} updateTaskField={updateTaskField} setPage={setPage} />}
+          {page === "backlog" && <BacklogPage tasks={tasks} epics={epics} sprints={sprints} ws={ws} projects={projects} pColors={pColors} goTask={goTask} toggleTask={toggleTask} deleteTask={deleteTask} startFocus={startFocus} updateTaskField={updateTaskField} addEpic={addEpic} flash={flash} />}
+          {page === "burndown" && <BurndownPage sprints={sprints} tasks={tasks} />}
+          {page === "securityIssues" && <SecurityIssuesPage tasks={tasks} ws={ws} projects={projects} pColors={pColors} goTask={goTask} updateTaskField={updateTaskField} setShowNewTask={setShowNewTask} setNewTaskType={setNewTaskType} />}
+          {page === "auditLog" && <AuditLogPage auditLog={auditLog} loading={auditLogLoading} />}
           {page === "settings" && <SettingsPage profileData={profileData} setProfileData={setProfileData} saveProfile={saveProfile} profileSaving={profileSaving} themeName={themeName} exportData={exportData} exporting={exporting} deleteAccount={deleteAccount} deleting={deleting} inputStyle={inputStyle} household={household} householdMembers={householdMembers} pendingInvites={pendingInvites} incomingInvite={incomingInvite} householdLoading={householdLoading} createHousehold={createHousehold} inviteMember={inviteMember} acceptInvite={acceptInvite} declineInvite={declineInvite} />}
         </div>
       </div>
@@ -1471,6 +1504,20 @@ export default function App() {
               ><X size={14} /></div>
             </div>
           ))}
+        </div>
+        <div style={{ marginBottom:14 }}>
+          <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>Type</label>
+          <div style={{ display:"flex",gap:6,flexWrap:"wrap" }}>
+            {TASK_TYPES.map(tt => (
+              <div key={tt.key} onClick={() => setNewTaskType(tt.key)} style={{
+                padding:"6px 12px",borderRadius:10,cursor:"pointer",
+                background: newTaskType === tt.key ? `${tt.color}18` : "var(--hover-bg)",
+                border: newTaskType === tt.key ? `2px solid ${tt.color}` : "2px solid transparent",
+                fontFamily:"var(--body)",fontSize:11,fontWeight:600,color:newTaskType===tt.key?tt.color:"var(--muted)",
+                transition:"all 0.15s",display:"flex",alignItems:"center",gap:4,
+              }}>{tt.label}</div>
+            ))}
+          </div>
         </div>
         <div style={{ marginBottom:20 }}>
           <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>Reward (after completing)</label>
@@ -1915,25 +1962,6 @@ export default function App() {
         </div>
       </Modal>
 
-      <Modal open={showNewWiki} onClose={() => setShowNewWiki(false)} title="New Article">
-        <div style={{ marginBottom:14 }}>
-          <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>Title</label>
-          <input value={newWikiTitle} onChange={e => setNewWikiTitle(e.target.value)} placeholder="Article title" style={inputStyle} autoFocus />
-        </div>
-        <div style={{ marginBottom:14 }}>
-          <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>Category</label>
-          <input value={newWikiCategory} onChange={e => setNewWikiCategory(e.target.value)} placeholder="e.g. Teaching, Engineering..." style={inputStyle} />
-        </div>
-        <div style={{ marginBottom:14 }}>
-          <label style={{ fontFamily:"var(--body)",fontSize:12,color:"var(--muted)",fontWeight:600,display:"block",marginBottom:6 }}>Content</label>
-          <textarea value={newWikiContent} onChange={e => setNewWikiContent(e.target.value)} placeholder="Write your article..." style={{ ...inputStyle, minHeight:160, resize:"vertical",fontFamily:"var(--mono)",fontSize:13 }} />
-        </div>
-        <div style={{ display:"flex",justifyContent:"flex-end",gap:10 }}>
-          <Btn onClick={() => setShowNewWiki(false)}>Cancel</Btn>
-          <Btn primary onClick={createWikiArticle}>Create Article</Btn>
-        </div>
-      </Modal>
-
       {/* ─── FINANCE MODAL ─── */}
       <Modal open={showNewTransaction} onClose={() => setShowNewTransaction(false)} title="Add Transaction">
         <div style={{ marginBottom:14 }}>
@@ -2188,6 +2216,12 @@ export default function App() {
       </Modal>
 
       <Toast message={toast.msg} visible={toast.visible} />
+
+      <ConfirmModal
+        item={confirmDelete}
+        onConfirm={() => { deleteTask(confirmDelete.id); setConfirmDelete(null); }}
+        onCancel={() => setConfirmDelete(null)}
+      />
     </div>
   );
 }

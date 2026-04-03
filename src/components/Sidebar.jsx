@@ -1,8 +1,10 @@
 import { useState } from "react";
 import {
   Home, Inbox, Calendar, ClipboardList, Timer, Repeat,
-  Wallet, Library, RefreshCw, Trophy, Settings, Sun, Moon,
+  Wallet, Trophy, Settings, Sun, Moon,
   ArrowLeft, Plus, ChevronDown, ChevronRight, Zap, LogOut,
+  Layers, ListChecks, TrendingDown, RotateCcw,
+  Shield, ScrollText, AlertTriangle,
 } from "lucide-react";
 import { getWsIcon } from "../lib/constants";
 import { Ring } from "./ui";
@@ -72,6 +74,31 @@ export default function Sidebar({
           ))}
         </div>
 
+        {/* Scrum section */}
+        <div style={{ padding: "8px 12px 2px" }}>
+          {!collapsed && <div onClick={() => setSidebarSections(s => ({ ...s, scrum: !s.scrum }))} style={{ fontFamily: "var(--mono)", fontSize: 9, color: "var(--muted)", textTransform: "uppercase", letterSpacing: 2, padding: "0 10px", marginBottom: 8, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between" }}>Scrum<ChevronDown size={12} style={{ transition: "transform 0.2s", transform: sidebarSections.scrum ? "none" : "rotate(-90deg)" }} /></div>}
+          {sidebarSections.scrum && [
+            { icon: <Layers size={18} />, label: "Sprint Board", id: "sprintBoard" },
+            { icon: <ListChecks size={18} />, label: "Backlog", id: "backlog" },
+            { icon: <TrendingDown size={18} />, label: "Burndown", id: "burndown" },
+            { icon: <RotateCcw size={18} />, label: "Retrospective", id: "retrospective" },
+          ].map(nav => (
+            <div key={nav.id} onClick={() => { setPage(nav.id); setShowMobileSidebar(false); }} style={{
+              display: "flex", alignItems: "center", gap: 10, padding: collapsed ? "10px 18px" : "9px 14px",
+              borderRadius: 12, cursor: "pointer", marginBottom: 2,
+              background: page === nav.id ? "var(--primary-bg)" : "transparent",
+              color: page === nav.id ? "var(--primary)" : "var(--muted)",
+              fontFamily: "var(--body)", fontSize: 13, fontWeight: page === nav.id ? 700 : 500, transition: "all 0.15s",
+            }}
+              onMouseEnter={e => { if (page !== nav.id) e.currentTarget.style.background = "var(--hover-bg)"; }}
+              onMouseLeave={e => { if (page !== nav.id) e.currentTarget.style.background = page === nav.id ? "var(--primary-bg)" : "transparent"; }}
+            >
+              <span style={{ fontSize: 16 }}>{nav.icon}</span>
+              {!collapsed && nav.label}
+            </div>
+          ))}
+        </div>
+
         {/* Track section */}
         <div style={{ padding: "8px 12px 2px" }}>
           {!collapsed && <div onClick={() => setSidebarSections(s => ({ ...s, track: !s.track }))} style={{ fontFamily: "var(--mono)", fontSize: 9, color: "var(--muted)", textTransform: "uppercase", letterSpacing: 2, padding: "0 10px", marginBottom: 8, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between" }}>Track<ChevronDown size={12} style={{ transition: "transform 0.2s", transform: sidebarSections.track ? "none" : "rotate(-90deg)" }} /></div>}
@@ -95,13 +122,13 @@ export default function Sidebar({
           ))}
         </div>
 
-        {/* Library section */}
+        {/* Security section */}
         <div style={{ padding: "8px 12px 2px" }}>
-          {!collapsed && <div onClick={() => setSidebarSections(s => ({ ...s, library: !s.library }))} style={{ fontFamily: "var(--mono)", fontSize: 9, color: "var(--muted)", textTransform: "uppercase", letterSpacing: 2, padding: "0 10px", marginBottom: 8, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between" }}>Library<ChevronDown size={12} style={{ transition: "transform 0.2s", transform: sidebarSections.library ? "none" : "rotate(-90deg)" }} /></div>}
-          {sidebarSections.library && [
-            { icon: <Library size={18} />, label: "Wiki", id: "wiki" },
-            { icon: <RefreshCw size={18} />, label: "Review", id: "review" },
-            { icon: <Trophy size={18} />, label: "Rewards", id: "rewards" },
+          {!collapsed && <div onClick={() => setSidebarSections(s => ({ ...s, security: !s.security }))} style={{ fontFamily: "var(--mono)", fontSize: 9, color: "var(--muted)", textTransform: "uppercase", letterSpacing: 2, padding: "0 10px", marginBottom: 8, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between" }}>Security<ChevronDown size={12} style={{ transition: "transform 0.2s", transform: sidebarSections.security ? "none" : "rotate(-90deg)" }} /></div>}
+          {sidebarSections.security && [
+            { icon: <Shield size={18} />, label: "Security Issues", id: "securityIssues" },
+            { icon: <ScrollText size={18} />, label: "Audit Log", id: "auditLog" },
+            { icon: <AlertTriangle size={18} />, label: "Vuln Tracker", id: "vulnTracker" },
           ].map(nav => (
             <div key={nav.id} onClick={() => { setPage(nav.id); setShowMobileSidebar(false); }} style={{
               display: "flex", alignItems: "center", gap: 10, padding: collapsed ? "10px 18px" : "9px 14px",
@@ -218,6 +245,19 @@ export default function Sidebar({
         >
           <span style={{ fontSize: 13 }}><Settings size={14} /></span>
           {!collapsed && "Settings"}
+        </div>
+        <div onClick={() => { setPage("rewards"); setShowMobileSidebar(false); }} style={{
+          display: "flex", alignItems: "center", justifyContent: collapsed ? "center" : "flex-start",
+          gap: 10, padding: "8px 14px", borderRadius: 10, cursor: "pointer",
+          color: page === "rewards" ? "var(--primary)" : "var(--muted)",
+          background: page === "rewards" ? "var(--primary-bg)" : "transparent",
+          fontFamily: "var(--body)", fontSize: 12, fontWeight: page === "rewards" ? 700 : 500, marginBottom: 4,
+        }}
+          onMouseEnter={e => { if (page !== "rewards") e.currentTarget.style.background = "var(--hover-bg)"; }}
+          onMouseLeave={e => e.currentTarget.style.background = page === "rewards" ? "var(--primary-bg)" : "transparent"}
+        >
+          <span style={{ fontSize: 13 }}><Trophy size={14} /></span>
+          {!collapsed && "Rewards"}
         </div>
         <div onClick={toggleTheme} style={{
           display: "flex", alignItems: "center", justifyContent: collapsed ? "center" : "flex-start",

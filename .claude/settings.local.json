@@ -1,0 +1,36 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(ls -la /Users/sethnordgren/Projects/OsVitae/src/components/*.jsx)",
+      "Bash(grep -r \"localStorage\\\\|sessionStorage\\\\|IndexedDB\" /Users/sethnordgren/Projects/OsVitae/src --include=*.js --include=*.jsx)",
+      "Bash(grep -r \"getUserId\\\\|getSession\" /Users/sethnordgren/Projects/OsVitae/src --include=*.js --include=*.jsx)",
+      "Bash(grep -r \"gotrueClient\\\\|Auth\\\\|session\" /Users/sethnordgren/Projects/OsVitae/supabase --include=*.ts)",
+      "Bash(grep -r \"AsyncStorage\\\\|storage:\" /Users/sethnordgren/Projects/OsVitae --include=*.js --include=*.jsx -B 2 -A 5)",
+      "Bash(npm run:*)",
+      "Bash(npx vite:*)",
+      "Bash(node -e \":*)",
+      "Bash(npx vercel:*)",
+      "Bash(find /Users/sethnordgren/Projects/OsVitae -name *.ics -o -name *calendar* -type f)",
+      "Bash(vercel --prod)",
+      "Bash(npm ls:*)",
+      "Bash(npx supabase:*)",
+      "Bash(supabase db:*)",
+      "Bash(vercel --version)",
+      "Bash(npm install:*)",
+      "Bash(supabase --version)",
+      "Bash(find /Users/sethnordgren/Projects/OsVitae/src -type f \\\\\\(-name *.tsx -o -name *.ts \\\\\\))",
+      "Bash(grep -E \"\\\\.\\(tsx|ts|jsx|js\\)$\")",
+      "Bash(npx eslint:*)",
+      "Bash(npx husky:*)",
+      "Bash(chmod +x /Users/sethnordgren/Projects/OsVitae/.husky/pre-commit /Users/sethnordgren/Projects/OsVitae/.husky/commit-msg)",
+      "Bash(echo \"EXIT: $?\")",
+      "Bash(node -e \"const pkg = require\\('./package.json'\\); console.log\\(JSON.stringify\\(pkg['lint-staged'], null, 2\\)\\)\")",
+      "Bash(bash -x .husky/pre-commit)",
+      "Bash(npx lint-staged:*)",
+      "Bash(echo \"EXIT CODE: $?\")"
+    ]
+  }
+}

@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { Timer, Check, Paperclip, Pencil, Trash2, Clock, Calendar, Sun, Sunset, Moon, Gift } from "lucide-react";
-import { Glass, Btn } from "../ui";
+import { Glass, Btn, ConfirmModal } from "../ui";
 import { getWsIcon } from "../../lib/constants";
+import { priorityDot, badgeStyle, sectionHeader } from "../../lib/styles";
 
 const sectionLabels = { morning: "Morning", afternoon: "Afternoon", evening: "Evening" };
 const SectionIcon = ({ section, size = 12 }) => {
@@ -17,6 +19,7 @@ export default function TaskDetailPage({
   setShowNewNote, deleteTaskNote,
   flash,
 }) {
+  const [confirmDelete, setConfirmDelete] = useState(null);
   if (!activeTask) return <div>Task not found</div>;
   const w = ws.find(x => x.id === activeTask.wsId);
   const subDone = activeTask.subtasks.filter(s => s.done).length;
@@ -24,9 +27,9 @@ export default function TaskDetailPage({
     <div style={{ maxWidth:760 }}>
       <div onClick={() => setPage(page === "task" ? "today" : page)} style={{ fontFamily:"var(--body)",fontSize:13,color:"var(--primary)",cursor:"pointer",marginBottom:16,fontWeight:600 }}>← Back</div>
       <div style={{ display:"flex",alignItems:"center",gap:10,marginBottom:6,flexWrap:"wrap" }}>
-        <div style={{ width:10,height:10,borderRadius:"50%",background:pColors[activeTask.priority] }} />
+        <div style={priorityDot(pColors[activeTask.priority], 10)} />
         <span style={{ fontFamily:"var(--mono)",fontSize:10,color:pColors[activeTask.priority],fontWeight:700,textTransform:"uppercase",letterSpacing:1 }}>{activeTask.priority} priority</span>
-        {w && <span style={{ display:"inline-flex",alignItems:"center",gap:4,background:`${w?.color}14`,padding:"2px 10px",borderRadius:8,fontFamily:"var(--mono)",fontSize:10,color:w?.color,fontWeight:600 }}>{getWsIcon(w?.icon, 10)} {w?.name}</span>}
+        {w && <span style={{ ...badgeStyle(w?.color), gap:4, padding:"2px 10px", borderRadius:8, fontSize:10 }}>{getWsIcon(w?.icon, 10)} {w?.name}</span>}
         {activeTask.section && (
           <span style={{ display:"inline-flex",alignItems:"center",gap:4,background:"var(--subtle-bg)",padding:"2px 10px",borderRadius:8,fontFamily:"var(--mono)",fontSize:10,color:"var(--muted)",fontWeight:600 }}>
             <SectionIcon section={activeTask.section} size={10} /> {sectionLabels[activeTask.section]}
@@ -50,7 +53,7 @@ export default function TaskDetailPage({
         <Btn primary color={w?.color} onClick={() => startFocus(activeTask.id)}>Start Focus Session</Btn>
         <Btn onClick={() => toggleTask(activeTask.id)}>{activeTask.done ? "Mark Incomplete" : "Mark Complete"}</Btn>
         <Btn onClick={() => setEditingTask({ ...activeTask })}><Pencil size={14} style={{ marginRight:4 }} /> Edit</Btn>
-        <Btn onClick={() => { if (confirm("Delete this task?")) { deleteTask(activeTask.id); setPage("allTasks"); } }} style={{ color:"#EF4444" }}><Trash2 size={14} style={{ marginRight:4 }} /> Delete</Btn>
+        <Btn onClick={() => setConfirmDelete({ id: activeTask.id, title: activeTask.title })} style={{ color:"#EF4444" }}><Trash2 size={14} style={{ marginRight:4 }} /> Delete</Btn>
       </div>
 
       {activeTask.totalPomos > 0 && (
@@ -71,7 +74,7 @@ export default function TaskDetailPage({
 
       {activeTask.subtasks.length > 0 && (
         <Glass style={{ padding:20,marginBottom:16 }}>
-          <h3 style={{ fontFamily:"var(--heading)",fontSize:15,color:"var(--text)",margin:"0 0 14px",fontWeight:700 }}>Steps</h3>
+          <h3 style={{ ...sectionHeader, margin:"0 0 14px" }}>Steps</h3>
           {activeTask.subtasks.map((s,i) => (
             <div key={s.id} onClick={() => toggleSubtask(activeTask.id, s.id)} style={{
               display:"flex",alignItems:"center",gap:12,padding:"10px 0",cursor:"pointer",
@@ -93,7 +96,7 @@ export default function TaskDetailPage({
 
       <Glass style={{ padding:20,marginBottom:16 }}>
         <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14 }}>
-          <h3 style={{ fontFamily:"var(--heading)",fontSize:15,color:"var(--text)",margin:0,fontWeight:700 }}>Notes</h3>
+          <h3 style={{ ...sectionHeader, margin:0 }}>Notes</h3>
           <Btn small primary color="#5B8DEF" onClick={() => setShowNewNote(true)}>+ Add Note</Btn>
         </div>
         {activeTask.notes.length === 0 && <div style={{ fontFamily:"var(--body)",fontSize:13,color:"var(--muted)",padding:"10px 0" }}>No notes yet.</div>}
@@ -113,7 +116,7 @@ export default function TaskDetailPage({
 
       <Glass style={{ padding:20 }}>
         <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14 }}>
-          <h3 style={{ fontFamily:"var(--heading)",fontSize:15,color:"var(--text)",margin:0,fontWeight:700 }}>Attachments</h3>
+          <h3 style={{ ...sectionHeader, margin:0 }}>Attachments</h3>
           <Btn small onClick={() => flash("File upload coming in the full build!")}><Paperclip size={14} style={{ marginRight: 4 }} /> Upload</Btn>
         </div>
         {activeTask.attachments.length === 0 && <div style={{ fontFamily:"var(--body)",fontSize:13,color:"var(--muted)",padding:"10px 0" }}>No attachments yet.</div>}
@@ -142,6 +145,12 @@ export default function TaskDetailPage({
           <div style={{ fontFamily:"var(--body)",fontSize:13,color:"var(--text)" }}>{activeTask.reward}</div>
         </Glass>
       )}
+
+      <ConfirmModal
+        item={confirmDelete}
+        onConfirm={() => { deleteTask(confirmDelete.id); setConfirmDelete(null); setPage("allTasks"); }}
+        onCancel={() => setConfirmDelete(null)}
+      />
     </div>
   );
 }

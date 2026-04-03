@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ArrowUpRight, ArrowDownRight, DollarSign, Repeat, Trash2, Receipt, Wallet, Check, X, Pencil, Plus } from "lucide-react";
-import { Glass, Btn } from "../ui";
+import { Glass, Btn, ConfirmModal } from "../ui";
 
 export default function FinancePage({
   transactions, financeTab, setFinanceTab, setShowNewTransaction,
@@ -14,6 +14,7 @@ export default function FinancePage({
   inputStyle,
   getCategories, addCategory, renameCategory, deleteCategory,
 }) {
+  const [confirmDelete, setConfirmDelete] = useState(null);
   const [renamingCat, setRenamingCat] = useState(null);
   const [renameVal, setRenameVal] = useState("");
   const [newCatName, setNewCatName] = useState("");
@@ -407,7 +408,7 @@ export default function FinancePage({
                       <>
                         <span style={{ fontFamily:"var(--mono)",fontSize:12,fontWeight:700,color:over?"#EF4444":"var(--text)" }}>${spent.toFixed(2)} / ${limit.toLocaleString()}</span>
                         <div onClick={()=>{setEditingBudget(cat.id);setEditBudgetVal(String(limit));}} style={{ cursor:"pointer",color:"var(--muted)" }}><Pencil size={12}/></div>
-                        <div onClick={()=>{if(confirm(`Delete "${cat.label}" category?`))deleteCategory(cat.id);}} style={{ cursor:"pointer",color:"var(--muted)" }}><Trash2 size={12}/></div>
+                        <div onClick={()=>setConfirmDelete({ id: cat.id, title: cat.label })} style={{ cursor:"pointer",color:"var(--muted)" }}><Trash2 size={12}/></div>
                       </>
                     )}
                   </div>
@@ -495,6 +496,12 @@ export default function FinancePage({
           </Glass>
         </div>
       )}
+
+      <ConfirmModal
+        item={confirmDelete}
+        onConfirm={() => { deleteCategory(confirmDelete.id); setConfirmDelete(null); }}
+        onCancel={() => setConfirmDelete(null)}
+      />
     </div>
   );
 }

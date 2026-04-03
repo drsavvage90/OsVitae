@@ -4,8 +4,8 @@ import { Btn } from "../ui";
 import KanbanBoard from "../KanbanBoard";
 
 export default function AllTasksPage({
-  filteredTasks, setShowNewTask, TaskRow,
-  ws, projects, pColors, goTask, toggleTask, deleteTask, startFocus,
+  filteredTasks, setShowNewTask,
+  ws, projects, sprints, activeProjectId, pColors, goTask, toggleTask, deleteTask, startFocus,
   updateTaskStatus, updateTaskField,
 }) {
   const [view, setView] = useState(() => localStorage.getItem("osvitae-alltasks-view") || "list");
@@ -83,6 +83,8 @@ export default function AllTasksPage({
           tasks={visibleTasks}
           ws={ws}
           projects={projects}
+          sprints={sprints}
+          activeProjectId={activeProjectId}
           pColors={pColors}
           goTask={goTask}
           toggleTask={toggleTask}

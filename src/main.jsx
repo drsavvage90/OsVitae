@@ -5,9 +5,13 @@ import { AuthProvider, useAuth } from './contexts/AuthContext'
 import ErrorBoundary from './components/ErrorBoundary'
 import App from './App.jsx'
 import LoginPage from './components/LoginPage'
+import PrivacyPolicy from './components/PrivacyPolicy'
 
+// eslint-disable-next-line react-refresh/only-export-components
 function Root() {
   const { user, loading } = useAuth()
+
+  if (window.location.pathname === '/privacy') return <PrivacyPolicy />
 
   if (loading) {
     return (
