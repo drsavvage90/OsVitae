@@ -33,7 +33,8 @@
       "Bash(for f:*)",
       "Bash(do sed:*)",
       "Bash(curl -s -X POST \"https://gduostuaonehbtregsjy.supabase.co/functions/v1/migrate-encrypt\" -H \"Content-Type: application/json\" -d '{\"\"\"\"admin_secret\"\"\"\":\"\"\"\"f4831e8ed6f81ac7dee003fbd72cd14e262526de1eaa8e6b5b7855c82ffcd827\"\"\"\"}')",
-      "Bash(vercel whoami:*)"
+      "Bash(vercel whoami:*)",
+      "Bash(git pull:*)"
     ]
   }
 }
