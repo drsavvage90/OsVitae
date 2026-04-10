@@ -13,6 +13,7 @@ import { useFlash } from "./hooks/useFlash";
 import { useFinance } from "./hooks/useFinance";
 import { useHousehold } from "./hooks/useHousehold";
 import Sidebar from "./components/Sidebar";
+import DashboardPage from "./components/pages/DashboardPage";
 import FinancePage from "./components/pages/FinancePage";
 import SettingsPage from "./components/pages/SettingsPage";
 
@@ -23,7 +24,7 @@ import SettingsPage from "./components/pages/SettingsPage";
 //  MAIN APP
 // ═══════════════════════════════════════
 export default function App() {
-  const [page, setPage] = useState("finance");
+  const [page, setPage] = useState("dashboard");
   const [collapsed, setCollapsed] = useState(false);
   const [themeName, setThemeName] = useState(() => localStorage.getItem("osvitae-theme") || "default");
   const theme = THEMES[themeName] || THEMES.default;
@@ -93,7 +94,7 @@ export default function App() {
   const greeting = (hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening") + (displayName ? `, ${displayName}` : "");
 
   // Navigate helpers
-  const goFinance = () => { setPage("finance"); setShowMobileSidebar(false); };
+  const goDashboard = () => { setPage("dashboard"); setShowMobileSidebar(false); };
 
   // ─── INPUT STYLE ───
   const inputStyle = {
@@ -299,8 +300,9 @@ export default function App() {
   const breadcrumb = () => {
     const homeIcon = <Wallet size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />;
     const crumbs = {
-      finance: <><strong style={{ color:"var(--text)" }}>{homeIcon} Finance</strong></>,
-      settings: <><span onClick={goFinance} style={{ cursor:"pointer" }}>{homeIcon}</span> / <strong style={{ color:"var(--text)" }}>Settings</strong></>,
+      dashboard: <><strong style={{ color:"var(--text)" }}>{homeIcon} Dashboard</strong></>,
+      finance: <><span onClick={goDashboard} style={{ cursor:"pointer" }}>{homeIcon}</span> / <strong style={{ color:"var(--text)" }}>Finance</strong></>,
+      settings: <><span onClick={goDashboard} style={{ cursor:"pointer" }}>{homeIcon}</span> / <strong style={{ color:"var(--text)" }}>Settings</strong></>,
     };
     return crumbs[page] || null;
   };
@@ -348,8 +350,10 @@ export default function App() {
           .mobile-sidebar-overlay{display:block}
           .topbar-breadcrumb{display:none}
           .topbar-search{width:auto;flex:1}
+          .stats-grid{grid-template-columns:1fr!important}
           .main-content{padding:12px 14px!important}
           .modal-inner{width:calc(100vw - 24px)!important;max-width:none;margin:12px;max-height:calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 24px)!important}
+          .today-heading{font-size:24px!important}
         }
 
         /* ── Larger phones / small tablets (431-600px) ── */
@@ -359,6 +363,7 @@ export default function App() {
           .mobile-sidebar-overlay{display:block}
           .topbar-breadcrumb{display:none}
           .topbar-search{width:auto;flex:1}
+          .stats-grid{grid-template-columns:1fr 1fr!important}
           .main-content{padding:16px 18px!important}
           .modal-inner{width:calc(100vw - 32px)!important;max-width:520px;margin:16px}
         }
@@ -370,6 +375,7 @@ export default function App() {
           .mobile-sidebar-overlay{display:block}
           .topbar-breadcrumb{display:none}
           .topbar-search{width:auto;flex:1}
+          .stats-grid{grid-template-columns:1fr 1fr!important}
           .main-content{padding:16px 18px!important}
           .modal-inner{width:calc(100vw - 32px)!important;max-width:520px;margin:16px}
         }
@@ -381,6 +387,7 @@ export default function App() {
           .mobile-sidebar-overlay{display:block}
           .topbar-breadcrumb{display:none}
           .topbar-search{width:auto;flex:1}
+          .stats-grid{grid-template-columns:1fr 1fr!important}
           .main-content{padding:16px 18px!important}
           .modal-inner{width:calc(100vw - 32px)!important;max-width:520px;margin:16px}
         }
@@ -430,6 +437,7 @@ export default function App() {
         </div>
 
         <div className="main-content" style={{ flex:1,overflow:"auto",padding:"24px 28px", minHeight: 0, display:"flex", flexDirection:"column" }}>
+          {page === "dashboard" && <DashboardPage greeting={greeting} transactions={transactions} bills={bills} billPayments={billPayments} budgets={budgets} accounts={accounts} netWorthHistory={netWorthHistory} getCategories={getCategories} setPage={setPage} />}
           {page === "finance" && <FinancePage transactions={transactions} financeTab={financeTab} setFinanceTab={setFinanceTab} setShowNewTransaction={setShowNewTransaction} deleteTransaction={deleteTransaction} setEditingTransaction={setEditingTransaction} saveBudget={saveBudget} addIncome={addIncome} togglePaid={togglePaid} addBill={addBill} deleteBill={deleteBill} setEditingBill={setEditingBill} budgets={budgets} editingBudget={editingBudget} setEditingBudget={setEditingBudget} editBudgetVal={editBudgetVal} setEditBudgetVal={setEditBudgetVal} newIncomeCategory={newIncomeCategory} setNewIncomeCategory={setNewIncomeCategory} newIncomeAmount={newIncomeAmount} setNewIncomeAmount={setNewIncomeAmount} newIncomeDesc={newIncomeDesc} setNewIncomeDesc={setNewIncomeDesc} newIncomeRecurring={newIncomeRecurring} setNewIncomeRecurring={setNewIncomeRecurring} bills={bills} billPayments={billPayments} newBillName={newBillName} setNewBillName={setNewBillName} newBillAmount={newBillAmount} setNewBillAmount={setNewBillAmount} newBillDueDay={newBillDueDay} setNewBillDueDay={setNewBillDueDay} newBillCategory={newBillCategory} setNewBillCategory={setNewBillCategory} inputStyle={inputStyle} getCategories={getCategories} addCategory={addCategory} renameCategory={renameCategory} deleteCategory={deleteCategory} accounts={accounts} addAccount={addAccount} updateAccount={updateAccount} deleteAccount={deleteFinanceAccount} netWorthHistory={netWorthHistory} flash={flash} />}
           {page === "settings" && <SettingsPage profileData={profileData} setProfileData={setProfileData} saveProfile={saveProfile} profileSaving={profileSaving} themeName={themeName} exportData={exportData} exporting={exporting} deleteAccount={deleteAccount} deleting={deleting} inputStyle={inputStyle} household={household} householdMembers={householdMembers} pendingInvites={pendingInvites} incomingInvite={incomingInvite} householdLoading={householdLoading} createHousehold={createHousehold} inviteMember={inviteMember} acceptInvite={acceptInvite} declineInvite={declineInvite} />}
         </div>

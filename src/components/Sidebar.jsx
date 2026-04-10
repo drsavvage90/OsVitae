@@ -1,5 +1,5 @@
 import {
-  Wallet, Settings, Sun, Moon,
+  LayoutDashboard, Wallet, Settings, Sun, Moon,
   ArrowLeft, LogOut,
 } from "lucide-react";
 
@@ -9,7 +9,7 @@ export default function Sidebar({
   themeName, toggleTheme,
   setShowMobileSidebar, signOut,
 }) {
-  const goFinance = () => { setPage("finance"); setShowMobileSidebar(false); };
+  const goDashboard = () => { setPage("dashboard"); setShowMobileSidebar(false); };
 
   return (
     <div style={{
@@ -19,7 +19,7 @@ export default function Sidebar({
       transition: "width 0.25s ease, background 0.3s ease", overflow: "hidden", zIndex: 10,
     }}>
       <div style={{ padding: collapsed ? "20px 20px 16px" : "20px 22px 16px", borderBottom: "1px solid var(--border-light)" }}>
-        <div onClick={goFinance} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
+        <div onClick={goDashboard} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
           <div style={{ width: 36, height: 36, borderRadius: 10, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}><img src="/favicon.png" alt="OSVitae" style={{ width: "100%", height: "100%", objectFit: "cover" }} /></div>
           {!collapsed && <div>
             <div style={{ fontFamily: "var(--heading)", fontSize: 16, fontWeight: 800, color: "var(--text)", letterSpacing: -0.3 }}>OSVitae</div>
@@ -31,6 +31,7 @@ export default function Sidebar({
       <div style={{ flex: 1, overflowY: "auto", padding: "6px 0" }}>
         <div style={{ padding: "8px 12px 2px" }}>
           {[
+            { icon: <LayoutDashboard size={18} />, label: "Dashboard", id: "dashboard" },
             { icon: <Wallet size={18} />, label: "Finance", id: "finance" },
           ].map(nav => (
             <div key={nav.id} onClick={() => { setPage(nav.id); setShowMobileSidebar(false); }} style={{
