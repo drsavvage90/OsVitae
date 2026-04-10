@@ -222,6 +222,8 @@ export default function App() {
     addBill, deleteBill, updateBill,
     customCategories: _customCategories, setCustomCategories, getCategories,
     addCategory, renameCategory, deleteCategory, seedDefaultCategories,
+    accounts, setAccounts, addAccount, updateAccount, deleteAccount: deleteFinanceAccount,
+    netWorthHistory, setNetWorthHistory,
   } = useFinance(flash);
 
   const {
@@ -909,6 +911,8 @@ export default function App() {
       { data: dbFinanceCategories },
       { data: dbProfile },
       { data: dbAuditLog },
+      { data: dbAccounts },
+      { data: dbNetWorthHistory },
     ] = await Promise.all([
       supabase.from("time_blocks").select("*").eq("user_id", userId),
       supabase.from("workspaces").select("*").eq("user_id", userId).order("position"),
@@ -931,6 +935,8 @@ export default function App() {
       supabase.from("finance_categories").select("*").eq("user_id", userId).order("sort_order"),
       supabase.from("profiles").select("intention_text, reward_text, xp, level, streak, total_pomos_ever, total_tasks_done").eq("id", userId).single(),
       supabase.from("audit_log").select("*").eq("user_id", userId).order("created_at", { ascending: false }).limit(200),
+      supabase.from("accounts").select("*").eq("user_id", userId),
+      supabase.from("net_worth_history").select("*").eq("user_id", userId).order("snapshot_date"),
     ]);
 
     if (dbBlocks) {
@@ -1110,6 +1116,18 @@ export default function App() {
       if (dbProfile.streak != null) setStreak(dbProfile.streak);
       if (dbProfile.total_pomos_ever != null) setTotalPomosEver(dbProfile.total_pomos_ever);
       if (dbProfile.total_tasks_done != null) setTotalTasksDone(dbProfile.total_tasks_done);
+    }
+
+    if (dbAccounts) {
+      setAccounts(dbAccounts.map(a => ({
+        id: a.id, name: a.name, type: a.type, balance: parseFloat(a.balance),
+      })));
+    }
+
+    if (dbNetWorthHistory) {
+      setNetWorthHistory(dbNetWorthHistory.map(h => ({
+        date: h.snapshot_date, netWorth: parseFloat(h.net_worth), assets: parseFloat(h.total_assets), liabilities: parseFloat(h.total_liabilities),
+      })));
     }
 
     } catch (loadErr) {
@@ -1381,7 +1399,8 @@ export default function App() {
           {page === "allTasks" && <AllTasksPage filteredTasks={filteredTasks} setShowNewTask={setShowNewTask} TaskRow={TaskRow} ws={ws} projects={projects} sprints={sprints} activeProjectId={activeProjectId} pColors={pColors} goTask={goTask} toggleTask={toggleTask} deleteTask={deleteTask} startFocus={startFocus} updateTaskStatus={updateTaskStatus} updateTaskField={updateTaskField} />}
           {page === "habits" && <HabitsPage habits={habits} setShowNewHabit={setShowNewHabit} toggleHabit={toggleHabit} deleteHabit={deleteHabit} setEditingHabit={setEditingHabit} />}
           {page === "calendar" && <CalendarPage timeBlocks={timeBlocks} tasks={tasks} ws={ws} projects={projects} setShowNewBlock={setShowNewBlock} deleteTimeBlock={deleteTimeBlock} setEditingBlock={setEditingBlock} goTask={goTask} updateTimeBlock={updateTimeBlock} />}
-          {page === "finance" && <FinancePage transactions={transactions} financeTab={financeTab} setFinanceTab={setFinanceTab} setShowNewTransaction={setShowNewTransaction} deleteTransaction={deleteTransaction} setEditingTransaction={setEditingTransaction} saveBudget={saveBudget} addIncome={addIncome} togglePaid={togglePaid} addBill={addBill} deleteBill={deleteBill} setEditingBill={setEditingBill} budgets={budgets} editingBudget={editingBudget} setEditingBudget={setEditingBudget} editBudgetVal={editBudgetVal} setEditBudgetVal={setEditBudgetVal} newIncomeCategory={newIncomeCategory} setNewIncomeCategory={setNewIncomeCategory} newIncomeAmount={newIncomeAmount} setNewIncomeAmount={setNewIncomeAmount} newIncomeDesc={newIncomeDesc} setNewIncomeDesc={setNewIncomeDesc} newIncomeRecurring={newIncomeRecurring} setNewIncomeRecurring={setNewIncomeRecurring} bills={bills} billPayments={billPayments} newBillName={newBillName} setNewBillName={setNewBillName} newBillAmount={newBillAmount} setNewBillAmount={setNewBillAmount} newBillDueDay={newBillDueDay} setNewBillDueDay={setNewBillDueDay} newBillCategory={newBillCategory} setNewBillCategory={setNewBillCategory} inputStyle={inputStyle} getCategories={getCategories} addCategory={addCategory} renameCategory={renameCategory} deleteCategory={deleteCategory} />}
+          {page === "finance" && <FinancePage transactions={transactions} financeTab={financeTab} setFinanceTab={setFinanceTab} setShowNewTransaction={setShowNewTransaction} deleteTransaction={deleteTransaction} setEditingTransaction={setEditingTransaction} saveBudget={saveBudget} addIncome={addIncome} togglePaid={togglePaid} addBill={addBill} deleteBill={deleteBill} setEditingBill={setEditingBill} budgets={budgets} editingBudget={editingBudget} setEditingBudget={setEditingBudget} editBudgetVal={editBudgetVal} setEditBudgetVal={setEditBudgetVal} newIncomeCategory={newIncomeCategory} setNewIncomeCategory={setNewIncomeCategory} newIncomeAmount={newIncomeAmount} setNewIncomeAmount={setNewIncomeAmount} newIncomeDesc={newIncomeDesc} setNewIncomeDesc={setNewIncomeDesc} newIncomeRecurring={newIncomeRecurring} setNewIncomeRecurring={setNewIncomeRecurring} bills={bills} billPayments={billPayments} newBillName={newBillName} setNewBillName={setNewBillName} newBillAmount={newBillAmount} setNewBillAmount={setNewBillAmount} newBillDueDay={newBillDueDay} setNewBillDueDay={setNewBillDueDay} newBillCategory={newBillCategory} setNewBillCategory={setNewBillCategory} inputStyle={inputStyle} getCategories={getCategories} addCategory={addCategory} renameCategory={renameCategory} deleteCategory={deleteCategory} accounts={accounts} addAccount={addAccount} updateAccount={updateAccount} deleteAccount={deleteFinanceAccount} netWorthHistory={netWorthHistory} flash={flash} />}
+          {page === "review" && <ReviewPage tasks={tasks} inbox={inbox} habits={habits} toggleHabit={toggleHabit} goTask={goTask} pColors={pColors} />}
           {page === "inbox" && <InboxPage inbox={inbox} newInboxText={newInboxText} setNewInboxText={setNewInboxText} addInboxItem={addInboxItem} triageInbox={triageInbox} dismissInbox={dismissInbox} updateInboxItem={updateInboxItem} setTasks={setTasks} flash={flash} inputStyle={inputStyle} />}
           {page === "retrospective" && <SprintHubPage tasks={tasks} inbox={inbox} habits={habits} toggleHabit={toggleHabit} goTask={goTask} pColors={pColors} sprints={sprints} retrospectives={retrospectives} onSaveRetro={onSaveRetro} auditLog={auditLog} />}
           {page === "sprintBoard" && <SprintBoardPage sprints={sprints} tasks={tasks} ws={ws} projects={projects} pColors={pColors} goTask={goTask} toggleTask={toggleTask} deleteTask={deleteTask} startFocus={startFocus} updateTaskStatus={updateTaskStatus} updateTaskField={updateTaskField} setPage={setPage} />}

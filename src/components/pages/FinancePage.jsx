@@ -1,6 +1,73 @@
 import { useState } from "react";
-import { ArrowUpRight, ArrowDownRight, DollarSign, Repeat, Trash2, Receipt, Wallet, Check, X, Pencil, Plus } from "lucide-react";
+import { ArrowUpRight, ArrowDownRight, DollarSign, Repeat, Trash2, Receipt, Wallet, Check, X, Pencil, Plus, Download, AlertTriangle } from "lucide-react";
 import { Glass, Btn, ConfirmModal } from "../ui";
+import FinanceAnalytics from "./FinanceAnalytics";
+import FinanceNetWorth from "./FinanceNetWorth";
+import FinanceBillCalendar from "./FinanceBillCalendar";
+
+function exportFinanceCSV(transactions, bills, budgets, accounts, getCategories) {
+  const cats = getCategories();
+  const allCats = [...cats.income, ...cats.expense];
+  const getCat = (id) => allCats.find(c => c.id === id) || { label: id };
+
+  // Transactions CSV
+  let csv = "=== TRANSACTIONS ===\nDate,Type,Category,Description,Amount,Recurring\n";
+  [...transactions].sort((a, b) => new Date(b.date) - new Date(a.date)).forEach(tx => {
+    csv += `${tx.date},${tx.type},${getCat(tx.category).label},"${tx.description}",${tx.amount.toFixed(2)},${tx.recurring ? "Yes" : "No"}\n`;
+  });
+
+  // Bills CSV
+  csv += "\n=== BILLS ===\nName,Category,Amount,Due Day\n";
+  bills.forEach(b => {
+    csv += `"${b.name}",${getCat(b.category).label},${b.amount.toFixed(2)},${(b.dueDays || [b.dueDay]).join("/")}\n`;
+  });
+
+  // Budgets CSV
+  csv += "\n=== BUDGETS ===\nCategory,Budget Limit,Spent\n";
+  const totalBillsByCategory = {};
+  bills.forEach(b => { totalBillsByCategory[b.category] = (totalBillsByCategory[b.category] || 0) + b.amount; });
+  budgets.forEach(budget => {
+    const cat = getCat(budget.categoryId);
+    const txSpent = transactions.filter(t => t.type === "expense" && t.category === budget.categoryId).reduce((s, t) => s + t.amount, 0);
+    const billSpent = totalBillsByCategory[budget.categoryId] || 0;
+    csv += `${cat.label},${budget.limit.toFixed(2)},${(txSpent + billSpent).toFixed(2)}\n`;
+  });
+
+  // Accounts CSV
+  if (accounts && accounts.length > 0) {
+    csv += "\n=== ACCOUNTS ===\nName,Type,Balance\n";
+    accounts.forEach(a => {
+      csv += `"${a.name}",${a.type},${a.balance.toFixed(2)}\n`;
+    });
+  }
+
+  // Monthly Summary
+  csv += "\n=== MONTHLY SUMMARY ===\nMonth,Income,Expenses,Net,Savings Rate\n";
+  const months = {};
+  transactions.forEach(tx => {
+    const key = tx.date?.slice(0, 7);
+    if (!key) return;
+    if (!months[key]) months[key] = { income: 0, expenses: 0 };
+    if (tx.type === "income") months[key].income += tx.amount;
+    else months[key].expenses += tx.amount;
+  });
+  Object.keys(months).sort().forEach(key => {
+    const m = months[key];
+    const billExp = bills.reduce((s, b) => s + b.amount, 0);
+    const totalExp = m.expenses + billExp;
+    const net = m.income - totalExp;
+    const rate = m.income > 0 ? ((net / m.income) * 100).toFixed(1) : "0.0";
+    csv += `${key},${m.income.toFixed(2)},${totalExp.toFixed(2)},${net.toFixed(2)},${rate}%\n`;
+  });
+
+  const blob = new Blob([csv], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `finance-export-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 export default function FinancePage({
   transactions, financeTab, setFinanceTab, setShowNewTransaction,
@@ -13,6 +80,8 @@ export default function FinancePage({
   newBillDueDay, setNewBillDueDay, newBillCategory, setNewBillCategory,
   inputStyle,
   getCategories, addCategory, renameCategory, deleteCategory,
+  accounts, addAccount, updateAccount, deleteAccount, netWorthHistory,
+  flash,
 }) {
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [renamingCat, setRenamingCat] = useState(null);
@@ -46,7 +115,10 @@ export default function FinancePage({
           <h1 style={{ fontFamily:"var(--heading)",fontSize:28,color:"var(--text)",margin:0,fontWeight:800 }}>Finance</h1>
           <p style={{ fontFamily:"var(--body)",fontSize:14,color:"var(--muted)",margin:"4px 0 0" }}>{transactions.length} transactions this month</p>
         </div>
-        <Btn primary onClick={() => setShowNewTransaction(true)}>+ Add Transaction</Btn>
+        <div style={{ display:"flex",gap:8 }}>
+          <Btn onClick={() => { exportFinanceCSV(transactions, bills, budgets, accounts, getCategories); flash("Finance data exported!"); }} style={{ display:"flex",alignItems:"center",gap:6 }}><Download size={14}/> Export</Btn>
+          <Btn primary onClick={() => setShowNewTransaction(true)}>+ Add Transaction</Btn>
+        </div>
       </div>
 
       <div className="stats-grid" style={{ display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:14,marginBottom:24 }}>
@@ -65,7 +137,7 @@ export default function FinancePage({
       </div>
 
       <div style={{ display:"flex",gap:4,marginBottom:20,background:"var(--subtle-bg)",borderRadius:12,padding:4,width:"fit-content" }}>
-        {["Transactions","Income","Bills","Budget","Summary"].map(t => <div key={t} onClick={() => setFinanceTab(t)} style={fTabStyle(t)}>{t}</div>)}
+        {["Transactions","Income","Bills","Budget","Analytics","Net Worth","Calendar","Summary"].map(t => <div key={t} onClick={() => setFinanceTab(t)} style={fTabStyle(t)}>{t}</div>)}
       </div>
 
       {financeTab === "Transactions" && (
@@ -361,8 +433,46 @@ export default function FinancePage({
         );
       })()}
 
-      {financeTab === "Budget" && (
+      {financeTab === "Budget" && (() => {
+        // Spending alerts
+        const alerts = cats.expense.map(cat => {
+          const budget = budgets.find(b => b.categoryId === cat.id);
+          const limit = budget ? budget.limit : 0;
+          if (limit <= 0) return null;
+          const txSpent = transactions.filter(t => t.type === "expense" && t.category === cat.id).reduce((s, t) => s + t.amount, 0);
+          const billSpent = bills.filter(b => b.category === cat.id).reduce((s, b) => s + b.amount, 0);
+          const spent = txSpent + billSpent;
+          const pct = (spent / limit) * 100;
+          if (pct >= 100) return { cat, spent, limit, pct, level: "over" };
+          if (pct >= 80) return { cat, spent, limit, pct, level: "warning" };
+          return null;
+        }).filter(Boolean);
+
+        return (
         <div>
+          {/* Spending Alerts */}
+          {alerts.length > 0 && (
+            <div style={{ marginBottom: 20 }}>
+              {alerts.map(alert => (
+                <Glass key={alert.cat.id} style={{
+                  padding: 14, marginBottom: 8, display: "flex", alignItems: "center", gap: 12,
+                  border: alert.level === "over" ? "2px solid #EF4444" : "2px solid #F59E0B",
+                  background: alert.level === "over" ? "rgba(239,68,68,0.06)" : "rgba(245,158,11,0.06)",
+                }}>
+                  <AlertTriangle size={18} color={alert.level === "over" ? "#EF4444" : "#F59E0B"} />
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontFamily: "var(--heading)", fontSize: 13, fontWeight: 700, color: alert.level === "over" ? "#EF4444" : "#F59E0B" }}>
+                      {alert.level === "over" ? `${alert.cat.label} is over budget!` : `${alert.cat.label} is approaching budget limit`}
+                    </div>
+                    <div style={{ fontFamily: "var(--mono)", fontSize: 11, color: "var(--muted)" }}>
+                      ${alert.spent.toFixed(2)} of ${alert.limit.toFixed(2)} ({alert.pct.toFixed(0)}%)
+                    </div>
+                  </div>
+                </Glass>
+              ))}
+            </div>
+          )}
+
           <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:20 }}>
             <Glass style={{ padding:18,textAlign:"center" }}>
               <div style={{ fontFamily:"var(--mono)",fontSize:9,color:"var(--muted)",textTransform:"uppercase",letterSpacing:1,marginBottom:4 }}>Total Budget</div>
@@ -443,6 +553,19 @@ export default function FinancePage({
             </div>
           )}
         </div>
+        );
+      })()}
+
+      {financeTab === "Analytics" && (
+        <FinanceAnalytics transactions={transactions} bills={bills} budgets={budgets} getCategories={getCategories} />
+      )}
+
+      {financeTab === "Net Worth" && (
+        <FinanceNetWorth accounts={accounts} addAccount={addAccount} updateAccount={updateAccount} deleteAccount={deleteAccount} netWorthHistory={netWorthHistory} inputStyle={inputStyle} />
+      )}
+
+      {financeTab === "Calendar" && (
+        <FinanceBillCalendar bills={bills} billPayments={billPayments} togglePaid={togglePaid} getCategories={getCategories} />
       )}
 
       {financeTab === "Summary" && (

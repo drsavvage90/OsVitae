@@ -197,6 +197,77 @@ export function useFinance(flash) {
   const [editingTransaction, setEditingTransaction] = useState(null);
   const [editingBill, setEditingBill] = useState(null);
 
+  // Net Worth tracking
+  const [accounts, setAccounts] = useState([]);
+  const [netWorthHistory, setNetWorthHistory] = useState([]);
+
+  const addAccount = async (account) => {
+    const id = crypto.randomUUID();
+    const newAccount = { id, ...account };
+    setAccounts(prev => [...prev, newAccount]);
+    flash("Account added!");
+
+    // Update net worth history snapshot
+    const today = new Date().toISOString().slice(0, 10);
+    setNetWorthHistory(prev => {
+      const updated = [...prev.filter(h => h.date !== today)];
+      const allAccounts = [...accounts, newAccount];
+      const assets = allAccounts.filter(a => !["credit", "loan"].includes(a.type)).reduce((s, a) => s + a.balance, 0);
+      const liabilities = allAccounts.filter(a => ["credit", "loan"].includes(a.type)).reduce((s, a) => s + a.balance, 0);
+      updated.push({ date: today, netWorth: assets - liabilities, assets, liabilities });
+      return updated.sort((a, b) => a.date.localeCompare(b.date));
+    });
+
+    const userId = await getUserId();
+    if (!userId) return;
+    const { error } = await supabase.from("accounts").insert({ id, user_id: userId, name: account.name, type: account.type, balance: account.balance });
+    if (error) { logger.error("Failed to save account:", error); setAccounts(prev => prev.filter(a => a.id !== id)); flash("Failed to save account."); }
+    // Save net worth snapshot
+    const allAccounts = [...accounts, newAccount];
+    const assetTotal = allAccounts.filter(a => !["credit", "loan"].includes(a.type)).reduce((s, a) => s + a.balance, 0);
+    const liabTotal = allAccounts.filter(a => ["credit", "loan"].includes(a.type)).reduce((s, a) => s + a.balance, 0);
+    await supabase.from("net_worth_history").upsert({ user_id: userId, snapshot_date: today, net_worth: assetTotal - liabTotal, total_assets: assetTotal, total_liabilities: liabTotal }, { onConflict: "user_id,snapshot_date" });
+  };
+
+  const updateAccount = async (id, updates) => {
+    const prev = accounts.find(a => a.id === id);
+    setAccounts(as => as.map(a => a.id === id ? { ...a, ...updates } : a));
+    flash("Account updated!");
+
+    // Update net worth history snapshot
+    const today = new Date().toISOString().slice(0, 10);
+    setNetWorthHistory(prevHistory => {
+      const updated = [...prevHistory.filter(h => h.date !== today)];
+      const allAccounts = accounts.map(a => a.id === id ? { ...a, ...updates } : a);
+      const assets = allAccounts.filter(a => !["credit", "loan"].includes(a.type)).reduce((s, a) => s + a.balance, 0);
+      const liabilities = allAccounts.filter(a => ["credit", "loan"].includes(a.type)).reduce((s, a) => s + a.balance, 0);
+      updated.push({ date: today, netWorth: assets - liabilities, assets, liabilities });
+      return updated.sort((a, b) => a.date.localeCompare(b.date));
+    });
+
+    const userId = await getUserId();
+    if (!userId) return;
+    const dbUpdates = {};
+    if (updates.name !== undefined) dbUpdates.name = updates.name;
+    if (updates.balance !== undefined) dbUpdates.balance = updates.balance;
+    if (updates.type !== undefined) dbUpdates.type = updates.type;
+    const { error } = await supabase.from("accounts").update(dbUpdates).eq("id", id);
+    if (error) { logger.error("Failed to update account:", error); if (prev) setAccounts(as => as.map(a => a.id === id ? prev : a)); flash("Update failed."); }
+    // Save net worth snapshot
+    const updatedAccounts = accounts.map(a => a.id === id ? { ...a, ...updates } : a);
+    const assetTotal = updatedAccounts.filter(a => !["credit", "loan"].includes(a.type)).reduce((s, a) => s + a.balance, 0);
+    const liabTotal = updatedAccounts.filter(a => ["credit", "loan"].includes(a.type)).reduce((s, a) => s + a.balance, 0);
+    await supabase.from("net_worth_history").upsert({ user_id: userId, snapshot_date: today, net_worth: assetTotal - liabTotal, total_assets: assetTotal, total_liabilities: liabTotal }, { onConflict: "user_id,snapshot_date" });
+  };
+
+  const deleteAccount = async (id) => {
+    const acc = accounts.find(a => a.id === id);
+    setAccounts(prev => prev.filter(a => a.id !== id));
+    flash("Account removed");
+    const { error } = await supabase.from("accounts").delete().eq("id", id);
+    if (error) { logger.error("Failed to delete account:", error); if (acc) setAccounts(prev => [...prev, acc]); flash("Delete failed."); }
+  };
+
   const updateTransaction = async (id, updates) => {
     const prev = transactions.find(t => t.id === id);
     setTransactions(ts => ts.map(t => t.id === id ? { ...t, ...updates } : t));
@@ -257,5 +328,7 @@ export function useFinance(flash) {
     addBill, deleteBill, updateBill,
     customCategories, setCustomCategories, getCategories,
     addCategory, renameCategory, deleteCategory, seedDefaultCategories,
+    accounts, setAccounts, addAccount, updateAccount, deleteAccount,
+    netWorthHistory, setNetWorthHistory,
   };
 }
